@@ -43,11 +43,11 @@ def create_orderbooks(events: list[Event]) -> dict[str, Orderbook]:
 
 def hydrate_orderbook(target_book: Orderbook, event: BookEvent) -> None:
     target_book["bids"] = {
-        str(level["price"]): float(level["size"]) 
+        level["price"]: float(level["size"]) 
         for level in event.get("bids", [])
     }
     target_book["asks"] = {
-        str(level["price"]): float(level["size"]) 
+        level["price"]: float(level["size"]) 
         for level in event.get("asks", [])
     }
     last_price_str: str = event.get("last_trade_price", "0")
