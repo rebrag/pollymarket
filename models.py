@@ -145,14 +145,14 @@ class BookEvent(TypedDict):
     event_type: str #"event_type": "book",
     last_trade_price: str #"last_trade_price": "0.999"
 
-class AssetUpdate:
+class AssetUpdate(TypedDict):
     asset_id: str #"asset_id": "15813528336416885208709320741143401537584216609310132819355197271415877230211",
     price: str #"price": "0.19",
     size: str #"size": "0",
     side: str #"side": "BUY",
     hash: str #"hash": "57eeb6a9fb5ec62644cc86c64dd2d76666543dae",
-    best_bid: str #"best_bid": "0.14",
-    best_ask: str #"best_ask": "0.43"
+    best_bid: str #"best_bid": "0.14", NOTE When there aren't any ASKS, best_bid is set to "0"
+    best_ask: str #"best_ask": "0.43" NOTE When there aren't any BIDS, best_ask is set to "1"
 
 class PriceChangeEvent(TypedDict):
     """"This is the structure of "event_type": "price_chnage" that is received from polymarkets ws feed"""

@@ -1,10 +1,17 @@
+##TO DO 
+#get fetch_and_filter_gamma_events to re-run and attempt to subscribe to new assets not in asset_ids
+#Get display book (probably another file based on the objects this script creates)
+#Get 
+
 import asyncio
 import json
 import websockets
 from typing import TypedDict, cast
 import datetime
-from models import WSPayload, Event, Market, Orderbook, BookEvent, PriceChangeEvent, LastTradePriceEvent, TickSizeChangeEvent
+from models import WSPayload, Event, Market, Orderbook, BookEvent, PriceChangeEvent, LastTradePriceEvent, TickSizeChangeEvent, AssetUpdate
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
+
+logging_enabled = True
 
 WS_URL: str = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 
@@ -14,7 +21,7 @@ def get_subscribe_msg(asset_ids: list[str]) -> str:
     return json.dumps(payload)
 
 def get_unsubscribe_msg(asset_ids: list[str]) -> str:
-    payload: WSPayload = {"operation": "unsubscribe","type": "market","assets_ids": asset_ids}
+    payload: WSPayload = {"operation": "unsubscribe","assets_ids": [asset_ids]}
     print(json.dumps(payload))
     return json.dumps(payload)
 
@@ -62,7 +69,8 @@ def hydrate_orderbook(target_book: Orderbook, event: BookEvent) -> None:
         )
         now_ms: float = datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000.0
         latency: float = now_ms - event_ms
-        print(f"[{target_book['asset_id'][:8]}...] Synced Book | Latency: {latency:.2f}ms")
+        if logging_enabled == True:
+            print(f"[{target_book['asset_id'][:8]}...] Synced Book | Latency: {latency:.2f}ms")
 
 
 async def handle_ws(orderbooks: dict[str, Orderbook]) -> None:
@@ -75,31 +83,50 @@ async def handle_ws(orderbooks: dict[str, Orderbook]) -> None:
             await ws.send(get_subscribe_msg(asset_ids))
             print(f"Connected and subscribed to {len(asset_ids)} assets. Listening...")
             async for message in ws:
-                parsed: object = json.loads(cast(str, message))
+
+                try:
+                    ws_event: object = json.loads(message)
+                except json.JSONDecodeError as e:
+                    print("\n" + "!" * 30)
+                    print(f"CRASH DETECTED: {e}")
+                    print(f"RAW PAYLOAD: {repr(message)}")
+                    print("!" * 30 + "\n")
+                    continue
                 
-                if isinstance(parsed, list):
-                    initial_book_list: list[BookEvent] = cast(list[BookEvent], parsed)
+                if isinstance(ws_event, list):
+                    initial_book_list: list[BookEvent] = cast(list[BookEvent], ws_event)
                     
                     for book_event in initial_book_list:
                         asset_id: str = book_event["asset_id"]
                         if asset_id in orderbooks:
                             hydrate_orderbook(orderbooks[asset_id], book_event)
                     continue
-                event_type: str = str(parsed["event_type"])
+                event_type: str = str(ws_event["event_type"])
                 
                 if event_type == "book":
-                    book_event: BookEvent = cast(BookEvent, parsed)
+                    book_event: BookEvent = cast(BookEvent, ws_event)
                     asset_id: str = book_event["asset_id"]
                     if asset_id in orderbooks:
                         hydrate_orderbook(orderbooks[asset_id], book_event)
                 elif event_type == "price_change":
-                    price_event: PriceChangeEvent = cast(PriceChangeEvent, parsed)
+                    price_event: PriceChangeEvent = cast(PriceChangeEvent, ws_event)
+                    price_changes: list[AssetUpdate] = price_event["price_changes"]
+                    if price_changes[0]['best_bid'] == '0.999' or price_changes[0]['best_ask'] == '0.001':
+                        # print(price_changes)
+                        if price_changes[0]["asset_id"] in asset_ids:
+                            await ws.send(get_unsubscribe_msg(price_changes[0]["asset_id"]))
+                            asset_ids.remove(price_changes[0]["asset_id"])
+                            print(f'Unsubscribed and now len(asset_ids) = {len(asset_ids)}')
+                        if price_changes[1]["asset_id"] in asset_ids:
+                            await ws.send(get_unsubscribe_msg(price_changes[1]["asset_id"]))
+                            asset_ids.remove(price_changes[1]["asset_id"])
+                            print(f'Unsubscribed and now len(asset_ids) = {len(asset_ids)}.')
                     pass
                 elif event_type == "last_trade_price":
-                    trade_event: LastTradePriceEvent = cast(LastTradePriceEvent, parsed)
+                    trade_event: LastTradePriceEvent = cast(LastTradePriceEvent, ws_event)
                     pass
                 elif event_type == 'tick_size_change':
-                    print(json.dumps(parsed, indent=2))
+                    print(json.dumps(ws_event, indent=2))
                     pass
                 else:
                     unhandled_events[event_type] = unhandled_events.get(event_type, 0) + 1

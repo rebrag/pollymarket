@@ -58,6 +58,7 @@ def fetch_and_filter_gamma_events() -> list[Event]:
             if float(m.get('volume', 0)) > MIN_EVENT_VOL
             and float(m.get('bestAsk', 0)) not in {0.001, 1.0}
             and float(m.get('spread', 0.99)) < 0.3
+            and float(m.get('lastTradePrice', 0.00001)) > 0.00002
         ]
         valid_markets.sort(key=lambda y: float(y.get('volumeNum', 0)), reverse=True)
         event['markets'] = valid_markets
