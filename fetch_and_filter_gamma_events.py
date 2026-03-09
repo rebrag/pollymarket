@@ -80,7 +80,7 @@ def fetch_and_filter_gamma_events() -> list[Event]:
 
     # Final Summary
     print("\n--- Final Totals ---")
-    print(f'len(token_list) = {len(token_list)}')
+    # print(f'len(token_list) = {len(token_list)}')
     print(f"Events (API/Window): {len(gamma_events)}/len(filtered_events):{len(filtered_events)} len(output_events): {len(output_events)}")
     print(f"Markets from Filtered (Unfiltered/Filtered): {total_unfiltered_m}/{total_filtered_m}")
 

@@ -215,3 +215,31 @@ class TickSizeChangeEvent(TypedDict):
     new_tick_size: str #"new_tick_size": "0.001",
     timestamp: str #"timestamp": "1772598350672",
     event_type: str #"event_type": "tick_size_change"
+
+class BestBidAskEvent(TypedDict):
+    market: str
+    asset_id: str
+    best_bid: str
+    best_ask: str
+    spread: str
+    timestamp: str
+    event_type: str #best_bid_ask
+
+class NewMarketWsEvent(TypedDict):
+        id: str #"id": "1542085",
+        question: str#"question": "Will Viborg FF win on 2026-04-06?",
+        market: str #"market": "0x2aa0228436ce503fe33066bfa54f5b547f3e8a4bc19acfb980a6a46852260055",
+        slug: str #"slug": "den-vib-agf-2026-04-06-vib",
+        description: str #"description": "In the upcoming game, scheduled for April 6, 2026\nIf Viborg FF wins, this market will resolve to \"Yes\".\nOtherwise, this market will resolve to \"No\".\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely, with no make-up game, this market will resolve \"No\".\nThis market refers only to the outcome within the first 90 minutes of regular play plus stoppage time.\n\nThe primary resolution source for this market is the official statistics of the event as recognized by the governing body or event organizers. However, if the governing body or event organizers have not published final match statistics within 2 hours after the event's conclusion, a consensus of credible reporting may be used instead.",
+        asset_ids: list[str] #"assets_ids": [ "50351309255136140635720305168576833845521330511314321882673853812798453957650", "107121155649098101006139168418369342288278576743170843552540613247626899303724"],
+        outcomes: list[str] #"outcomes": ["Yes", "No"],
+        # "event_message": {
+        #     "id": "257095",
+        #     "ticker": "den-vib-agf-2026-04-06",
+        #     "slug": "den-vib-agf-2026-04-06",
+        #     "title": "Viborg FF vs. Aarhus GF",
+        #     "description": "This event is for the upcoming Denmark Superliga game, scheduled for Monday, April 6, 2026 between Viborg FF and Aarhus GF."
+        # },
+        timestamp: str #"timestamp": "1773086679617",
+        event_type: str #"event_type": "new_market",
+        tags: list[str | int] #"tags": []
