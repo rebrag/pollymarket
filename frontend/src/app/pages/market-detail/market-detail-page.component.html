@@ -1,0 +1,66 @@
+<section class="page">
+  <a routerLink="/">Back to explorer</a>
+  <h1>Market Detail</h1>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+  <p *ngIf="loading" class="state">Loading...</p>
+
+  <section *ngIf="metadata" class="grid">
+    <article class="card">
+      <h2>Metadata</h2>
+      <p><strong>Event:</strong> {{ metadata.event_title }}</p>
+      <p><strong>Question:</strong> {{ metadata.market_question }}</p>
+      <p><strong>Outcomes:</strong> {{ metadata.outcomes }}</p>
+      <p><strong>Asset ID:</strong> {{ metadata.asset_id }}</p>
+      <p><strong>Tick size:</strong> {{ metadata.min_tick_size }}</p>
+      <p><strong>Min order size:</strong> {{ metadata.min_order_size }}</p>
+      <p><strong>Neg risk:</strong> {{ metadata.is_neg_risk }}</p>
+      <p><strong>Game start:</strong> {{ metadata.game_start_time * 1000 | date: 'medium' }}</p>
+    </article>
+
+    <article class="card" *ngIf="stats">
+      <h2>Stats</h2>
+      <p><strong>Rows:</strong> {{ stats.row_count }}</p>
+      <p><strong>First timestamp:</strong> {{ (stats.first_ts ?? 0) * 1000 | date: 'medium' }}</p>
+      <p><strong>Last timestamp:</strong> {{ (stats.last_ts ?? 0) * 1000 | date: 'medium' }}</p>
+      <p><strong>Best bid range:</strong> {{ stats.min_best_bid }} - {{ stats.max_best_bid }}</p>
+      <p><strong>Best ask range:</strong> {{ stats.min_best_ask }} - {{ stats.max_best_ask }}</p>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>Bid / Other Asset / Spread Series</h2>
+    <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions"></canvas>
+  </section>
+
+  <section class="card">
+    <div class="raw-header">
+      <h2>Raw Rows</h2>
+      <button type="button" (click)="toggleRawData()">
+        {{ showRawData ? 'Hide Raw Data' : 'Display Raw Data' }}
+      </button>
+    </div>
+
+    <table *ngIf="showRawData">
+      <thead>
+        <tr>
+          <th>Best Ask</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows">
+          <td>{{ row.best_ask }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="!showRawData" class="state">Raw data hidden.</p>
+
+    <footer class="pagination" *ngIf="showRawData">
+      <span>Showing {{ offset + 1 }}-{{ Math.min(offset + limit, total) }} of {{ total }}</span>
+      <div>
+        <button type="button" (click)="previousPage()" [disabled]="offset === 0">Prev</button>
+        <button type="button" (click)="nextPage()" [disabled]="offset + limit >= total">Next</button>
+      </div>
+    </footer>
+  </section>
+</section>

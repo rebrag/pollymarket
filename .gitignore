@@ -1,2 +1,10 @@
 venv
 __pycache__
+market_data
+.env
+.pytest_cache
+.mypy_cache
+api/__pycache__
+frontend/node_modules
+frontend/.angular
+frontend/dist

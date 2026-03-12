@@ -1,0 +1,60 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.card {
+  border: 1px solid #d4d8dd;
+  border-radius: 10px;
+  padding: 0.9rem;
+  margin: 0.3rem 0;
+}
+
+.card p { margin: 0.25rem 0; }
+
+.raw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eceff3;
+  text-align: left;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.7rem;
+}
+
+.error {
+  color: #8d1f1f;
+}
+
+.state {
+  color: #455468;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

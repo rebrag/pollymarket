@@ -1,0 +1,70 @@
+<section class="page">
+  <header class="page-header">
+    <h1>Parquet Market Explorer</h1>
+    <p>Browse local parquet snapshots now, then switch backend source to S3 later.</p>
+  </header>
+
+  <section class="filters">
+    <label>
+      Search
+      <input [(ngModel)]="search" (keyup.enter)="applyFilters()" placeholder="Question or file name" />
+    </label>
+
+    <button type="button" (click)="applyFilters()">Apply</button>
+  </section>
+
+  <p *ngIf="error" class="error">{{ error }}</p>
+  <p *ngIf="loading" class="state">Loading events...</p>
+  <p *ngIf="!loading && !error && filteredEvents().length === 0" class="state">No events found.</p>
+
+  <section *ngIf="!loading && !error && filteredEvents().length > 0" class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Markets</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let event of filteredEvents()">
+          <tr class="event-row" (click)="toggleEvent(event.event_slug)">
+            <td>
+              <button type="button" class="expand-btn">
+                {{ isExpanded(event.event_slug) ? '▾' : '▸' }} {{ event.event_title }}
+              </button>
+            </td>
+            <td>{{ event.market_count }}</td>
+          </tr>
+
+          <tr *ngIf="isExpanded(event.event_slug)" class="child-row">
+            <td colspan="2">
+              <p *ngIf="isEventLoading(event.event_slug)" class="state">Loading markets...</p>
+              <p *ngIf="!isEventLoading(event.event_slug) && marketsForEvent(event.event_slug).length === 0" class="state">
+                No markets found for this event.
+              </p>
+
+              <table *ngIf="!isEventLoading(event.event_slug) && marketsForEvent(event.event_slug).length > 0" class="child-table">
+                <thead>
+                  <tr>
+                    <th>Market</th>
+                    <th>Rows</th>
+                    <th>Open</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let market of marketsForEvent(event.event_slug)">
+                    <td>{{ market.market_question }}</td>
+                    <td>{{ market.row_count }}</td>
+                    <td>
+                      <a [routerLink]="['/markets', market.market_id]">View</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </section>
+</section>

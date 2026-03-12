@@ -9,6 +9,7 @@ MIN_EVENT_VOL: int = 500
 MIN_MARKET_VOL: int = 10000
 H_BEFORE: int = 4
 H_AFTER: int = 1
+LOGGING_ENABLED = True
 
 def format_local(utc_str: str) -> str:
     dt: datetime = datetime.fromisoformat(utc_str.replace("Z", "+00:00")).astimezone()
@@ -70,11 +71,11 @@ def fetch_and_filter_gamma_events() -> list[Event]:
         # Output formatting
         time_lbl: str = format_local(event["startTime"])
         vol: int = round(float(event.get('volume', 0)))
-        print(f"{time_lbl}\tVol: {vol}\t{event['title']} (Markets: {len(valid_markets)}/{len(raw_markets)})")
+        if LOGGING_ENABLED: print(f"{time_lbl}\tVol: {vol}\t{event['title']} (Markets: {len(valid_markets)}/{len(raw_markets)})")
         
         for m in valid_markets:
             m_vol: float = m.get('volumeNum', 0)
-            print(f"  └─ Market: {m['question']} \t volume: {m_vol} \t bestAsk: {m['bestAsk']} \t spread: {m['spread']}")
+            if LOGGING_ENABLED: print(f"  └─ Market: {m['question']} \t volume: {round(m_vol,2)} \t bestAsk: {m['bestAsk']} \t spread: {m['spread']}")
             token_list.add(m["clobTokenIds"].strip('[]"').partition('",')[0])
             
 
@@ -89,4 +90,6 @@ def fetch_and_filter_gamma_events() -> list[Event]:
 
     return output_events
 
-fetch_and_filter_gamma_events()
+
+if __name__ == "__main__":
+    fetch_and_filter_gamma_events()
