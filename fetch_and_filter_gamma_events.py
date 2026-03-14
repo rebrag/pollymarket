@@ -9,7 +9,7 @@ MIN_EVENT_VOL: int = 500
 MIN_MARKET_VOL: int = 10000
 H_BEFORE: int = 4
 H_AFTER: int = 1
-LOGGING_ENABLED = True
+LOGGING_ENABLED = False
 
 def format_local(utc_str: str) -> str:
     dt: datetime = datetime.fromisoformat(utc_str.replace("Z", "+00:00")).astimezone()

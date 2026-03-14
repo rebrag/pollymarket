@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest } from 'rxjs';
 import {
@@ -21,6 +22,7 @@ import {
   MarketMetadataDto,
   MarketRow,
   MarketSeriesPoint,
+  MarketSummary,
   MarketStats,
   PaginatedResponse,
 } from '../../models/api.models';
@@ -55,7 +57,7 @@ Chart.register(hoverGuideLinePlugin);
 @Component({
   selector: 'app-market-detail-page',
   standalone: true,
-  imports: [CommonModule, BaseChartDirective, DatePipe, RouterLink],
+  imports: [CommonModule, FormsModule, BaseChartDirective, DatePipe, RouterLink],
   templateUrl: './market-detail-page.component.html',
   styleUrl: './market-detail-page.component.css',
 })
@@ -76,6 +78,11 @@ export class MarketDetailPageComponent implements OnInit {
 
   loading = false;
   error = '';
+  copyStatus = '';
+  relatedMarkets: MarketSummary[] = [];
+  selectedRelatedMarketId = '';
+  loadingRelatedMarkets = false;
+  relatedMarketsError = '';
 
   chartData: ChartData<'line'> = {
     labels: [],
@@ -145,15 +152,56 @@ export class MarketDetailPageComponent implements OnInit {
     this.showRawData = !this.showRawData;
   }
 
+  shortAssetId(assetId: string): string {
+    if (!assetId) {
+      return '';
+    }
+    return assetId.length <= 5 ? assetId : `${assetId.slice(0, 5)}...`;
+  }
+
+  async copyAssetId(): Promise<void> {
+    const assetId = this.metadata?.asset_id ?? '';
+    if (!assetId) {
+      return;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(assetId);
+      } else {
+        const input = document.createElement('input');
+        input.value = assetId;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      this.copyStatus = 'Copied';
+    } catch {
+      this.copyStatus = 'Copy failed';
+    }
+
+    window.setTimeout(() => {
+      if (this.copyStatus) {
+        this.copyStatus = '';
+      }
+    }, 1500);
+  }
+
   private loadAll(): void {
     this.loading = true;
     this.error = '';
+    this.relatedMarkets = [];
+    this.selectedRelatedMarketId = '';
+    this.loadingRelatedMarkets = false;
+    this.relatedMarketsError = '';
 
     this.api.getMetadata(this.marketId).subscribe({
       next: (metadata) => {
         this.metadata = metadata;
         this.updateOutcomeLabels(metadata.outcomes);
         this.setChartData(this.currentSeriesPoints);
+        this.loadRelatedMarkets(metadata.event_slug);
       },
       error: (err) => {
         this.error = `Metadata error: ${err?.message ?? 'unknown error'}`;
@@ -185,6 +233,19 @@ export class MarketDetailPageComponent implements OnInit {
       error: (err) => {
         this.error = `Rows error: ${err?.message ?? 'unknown error'}`;
         this.loading = false;
+      },
+    });
+  }
+
+  goToSelectedRelatedMarket(): void {
+    if (!this.selectedRelatedMarketId || this.selectedRelatedMarketId === this.marketId) {
+      return;
+    }
+
+    this.router.navigate(['/markets', this.selectedRelatedMarketId], {
+      queryParams: {
+        limit: this.limit,
+        offset: 0,
       },
     });
   }
@@ -261,6 +322,41 @@ export class MarketDetailPageComponent implements OnInit {
 
     this.outcome1Label = 'Outcome 1';
     this.outcome2Label = 'Outcome 2';
+  }
+
+  private loadRelatedMarkets(eventSlug: string): void {
+    if (!eventSlug) {
+      return;
+    }
+    this.loadingRelatedMarkets = true;
+    this.relatedMarketsError = '';
+    this.fetchRelatedMarketsPage(eventSlug, 0, []);
+  }
+
+  private fetchRelatedMarketsPage(eventSlug: string, offset: number, acc: MarketSummary[]): void {
+    const pageSize = 500;
+    this.api.getMarkets(eventSlug, '', pageSize, offset).subscribe({
+      next: (response: PaginatedResponse<MarketSummary>) => {
+        const nextAcc = [...acc, ...response.items];
+        const nextOffset = offset + response.items.length;
+        if (nextOffset < response.total) {
+          this.fetchRelatedMarketsPage(eventSlug, nextOffset, nextAcc);
+          return;
+        }
+
+        this.relatedMarkets = nextAcc.sort((a, b) => b.row_count - a.row_count);
+        if (this.relatedMarkets.some((m) => m.market_id === this.marketId)) {
+          this.selectedRelatedMarketId = this.marketId;
+        } else {
+          this.selectedRelatedMarketId = this.relatedMarkets[0]?.market_id ?? '';
+        }
+        this.loadingRelatedMarkets = false;
+      },
+      error: (err) => {
+        this.relatedMarketsError = `Related markets error: ${err?.message ?? 'unknown error'}`;
+        this.loadingRelatedMarkets = false;
+      },
+    });
   }
 
   private updateQueryParams(): void {

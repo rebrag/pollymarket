@@ -192,18 +192,24 @@ class HistoryLogger:
 
     def compact_market(self, metadata: MarketMetadata, delete_parts: bool = True) -> str | None:
         """
-        Combine all part files for this market into one final parquet.
-        Returns final file path or None if there are no part files.
+        Combine parquet files for this market into one final parquet.
+        If a final parquet already exists, it is included first so history is preserved.
+        Returns final file path or None if there are no input files.
         """
         event_dir = self._event_dir(metadata)
         parts_dir = self._parts_dir(metadata)
         final_path = self._final_path(metadata)
 
-        if not os.path.exists(parts_dir):
-            return None
+        part_paths: list[str] = []
+        if os.path.exists(parts_dir):
+            part_paths = sorted(glob.glob(os.path.join(parts_dir, "part-*.parquet")))
 
-        part_paths = sorted(glob.glob(os.path.join(parts_dir, "part-*.parquet")))
-        if not part_paths:
+        input_paths: list[str] = []
+        if os.path.exists(final_path):
+            input_paths.append(final_path)
+        input_paths.extend(part_paths)
+
+        if not input_paths:
             return None
 
         self._ensure_dir(event_dir)
@@ -213,7 +219,7 @@ class HistoryLogger:
 
         writer: pq.ParquetWriter | None = None
         try:
-            for p in part_paths:
+            for p in input_paths:
                 table = pq.read_table(p)
                 if writer is None:
                     # Ensure metadata present on final schema

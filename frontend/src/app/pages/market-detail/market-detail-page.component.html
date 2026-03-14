@@ -9,9 +9,16 @@
     <article class="card">
       <h2>Metadata</h2>
       <p><strong>Event:</strong> {{ metadata.event_title }}</p>
+      <p><strong>Slug:</strong> {{ metadata.event_slug }}</p>
       <p><strong>Question:</strong> {{ metadata.market_question }}</p>
       <p><strong>Outcomes:</strong> {{ metadata.outcomes }}</p>
-      <p><strong>Asset ID:</strong> {{ metadata.asset_id }}</p>
+      <p>
+        <strong>Asset ID:</strong>
+        <button type="button" class="copy-id-btn" (click)="copyAssetId()" [title]="metadata.asset_id">
+          {{ shortAssetId(metadata.asset_id) }}
+        </button>
+        <span *ngIf="copyStatus" class="copy-status">{{ copyStatus }}</span>
+      </p>
       <p><strong>Tick size:</strong> {{ metadata.min_tick_size }}</p>
       <p><strong>Min order size:</strong> {{ metadata.min_order_size }}</p>
       <p><strong>Neg risk:</strong> {{ metadata.is_neg_risk }}</p>
@@ -26,6 +33,28 @@
       <p><strong>Best bid range:</strong> {{ stats.min_best_bid }} - {{ stats.max_best_bid }}</p>
       <p><strong>Best ask range:</strong> {{ stats.min_best_ask }} - {{ stats.max_best_ask }}</p>
     </article>
+  </section>
+
+  <section *ngIf="metadata" class="card">
+    <h2>Other Markets In Event</h2>
+    <p *ngIf="relatedMarketsError" class="error">{{ relatedMarketsError }}</p>
+    <p *ngIf="loadingRelatedMarkets" class="state">Loading event markets...</p>
+    <div *ngIf="!loadingRelatedMarkets && !relatedMarketsError && relatedMarkets.length > 0" class="event-market-picker">
+      <select [(ngModel)]="selectedRelatedMarketId">
+        <option *ngFor="let market of relatedMarkets" [value]="market.market_id">
+          {{ market.market_question }} ({{ market.row_count }} rows)
+        </option>
+      </select>
+      <button
+        type="button"
+        (click)="goToSelectedRelatedMarket()"
+        [disabled]="!selectedRelatedMarketId || selectedRelatedMarketId === marketId">
+        Open Market
+      </button>
+    </div>
+    <p *ngIf="!loadingRelatedMarkets && !relatedMarketsError && relatedMarkets.length === 0" class="state">
+      No other markets found for this event.
+    </p>
   </section>
 
   <section class="card">

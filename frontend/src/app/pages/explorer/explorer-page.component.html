@@ -30,7 +30,11 @@
           <tr class="event-row" (click)="toggleEvent(event.event_slug)">
             <td>
               <button type="button" class="expand-btn">
-                {{ isExpanded(event.event_slug) ? '▾' : '▸' }} {{ event.event_title }}
+                {{ isExpanded(event.event_slug) ? 'v' : '>' }}
+                <span class="event-start">
+                  {{ event.game_start_time > 0 ? (event.game_start_time * 1000 | date: 'M/d h:mm a') : '--' }}
+                </span>
+                <span>{{ event.event_title }}</span>
               </button>
             </td>
             <td>{{ event.market_count }}</td>

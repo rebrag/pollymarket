@@ -45,13 +45,33 @@ export class ExplorerPageComponent implements OnInit {
 
   filteredEvents(): EventSummary[] {
     const q = this.search.trim().toLowerCase();
+    const compareByGameStart = (a: EventSummary, b: EventSummary): number => {
+      const aTs = a.game_start_time ?? 0;
+      const bTs = b.game_start_time ?? 0;
+      if (aTs <= 0 && bTs <= 0) {
+        return a.event_slug.localeCompare(b.event_slug);
+      }
+      if (aTs <= 0) {
+        return 1;
+      }
+      if (bTs <= 0) {
+        return -1;
+      }
+      if (aTs !== bTs) {
+        return aTs - bTs;
+      }
+      return a.event_slug.localeCompare(b.event_slug);
+    };
+
     if (!q) {
-      return this.events;
+      return [...this.events].sort(compareByGameStart);
     }
 
-    return this.events.filter((event) => {
-      return event.event_title.toLowerCase().includes(q) || event.event_slug.toLowerCase().includes(q);
-    });
+    return this.events
+      .filter((event) => {
+        return event.event_title.toLowerCase().includes(q) || event.event_slug.toLowerCase().includes(q);
+      })
+      .sort(compareByGameStart);
   }
 
   applyFilters(): void {

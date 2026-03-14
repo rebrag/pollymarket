@@ -12,6 +12,7 @@ class EventSummary(BaseModel):
     event_slug: str
     event_title: str
     market_count: int
+    game_start_time: float = 0.0
 
 
 class MarketSummary(BaseModel):

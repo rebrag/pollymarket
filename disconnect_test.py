@@ -1,3 +1,6 @@
+#This file serves as a test to see the cadence of disconnects without the more 
+#complex loops that refresh gamma events on a timer.
+
 import asyncio
 import json
 import websockets
@@ -7,22 +10,12 @@ import datetime
 import time
 from zoneinfo import ZoneInfo
 
-from models import (
-    WSPayload,
-    Event,
-    Market,
-    Orderbook,
-    BookEvent,
-    PriceChangeEvent,
-    LastTradePriceEvent,
-    AssetUpdate,
-)
+from models import ( WSPayload, Event, Market, Orderbook,BookEvent, PriceChangeEvent,LastTradePriceEvent,AssetUpdate)
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
 from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata
 
 WS_URL: str = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 WS_PERFORMANCE_CHECKER_S = 30.0
-
 
 def parse_asset_id(market: Market) -> str:
     raw_ids: str = market["clobTokenIds"]
@@ -53,12 +46,10 @@ def get_subscribe_msg(asset_ids: list[str]) -> str:
     print(json.dumps(payload))
     return json.dumps(payload)
 
-
 def subscribe_more_assets(asset_ids: list[str]) -> str:
     payload: WSPayload = {"assets_ids": asset_ids, "operation": "subscribe", "custom_feature_enabled": False}
     print(json.dumps(payload))
     return json.dumps(payload)
-
 
 def get_unsubscribe_msg(asset_ids: list[str]) -> str:
     payload: WSPayload = {"operation": "unsubscribe", "assets_ids": asset_ids}

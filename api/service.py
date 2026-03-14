@@ -94,18 +94,35 @@ class MarketCatalogService:
 
     def list_events(self) -> list[EventSummary]:
         self.refresh_index()
-        grouped: dict[str, EventSummary] = {}
+        grouped: dict[str, tuple[EventSummary, int]] = {}
         for item in self._by_id.values():
             key = item.metadata.event_slug or "unknown"
             if key not in grouped:
-                grouped[key] = EventSummary(
-                    event_slug=key,
-                    event_title=item.metadata.event_title or key,
-                    market_count=0,
+                grouped[key] = (
+                    EventSummary(
+                        event_slug=key,
+                        event_title=item.metadata.event_title or key,
+                        market_count=0,
+                        game_start_time=item.metadata.game_start_time,
+                    ),
+                    item.row_count,
                 )
-            grouped[key].market_count += 1
+            summary, max_rows = grouped[key]
+            summary.market_count += 1
+            if item.row_count > max_rows:
+                summary.game_start_time = item.metadata.game_start_time
+                grouped[key] = (summary, item.row_count)
 
-        return sorted(grouped.values(), key=lambda e: (e.event_slug, e.event_title))
+        events = [summary for summary, _ in grouped.values()]
+        return sorted(
+            events,
+            key=lambda e: (
+                e.game_start_time <= 0,
+                e.game_start_time if e.game_start_time > 0 else float("inf"),
+                e.event_slug,
+                e.event_title,
+            ),
+        )
 
     def list_markets(self, event_slug: str | None, query: str | None) -> list[MarketSummary]:
         self.refresh_index()

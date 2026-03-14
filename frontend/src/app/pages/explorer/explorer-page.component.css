@@ -72,6 +72,14 @@ td {
   width: 100%;
 }
 
+.event-start {
+  display: inline-block;
+  min-width: 7.5rem;
+  margin: 0 0.5rem 0 0.35rem;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
 .child-row td {
   background: #fbfdff;
 }

@@ -2,6 +2,7 @@ export interface EventSummary {
   event_slug: string;
   event_title: string;
   market_count: number;
+  game_start_time: number;
 }
 
 export interface MarketSummary {
