@@ -52,7 +52,8 @@ for (const envPath of envCandidates) {
 
 const mergedEnv = { ...fileEnv, ...process.env };
 
-const angularOffline = toBool(mergedEnv.ANGULAR_OFFLINE, true);
+const defaultAngularOffline = !toBool(mergedEnv.CI, false);
+const angularOffline = toBool(mergedEnv.ANGULAR_OFFLINE, defaultAngularOffline);
 const localApiBaseUrl = stripTrailingSlash((mergedEnv.ANGULAR_LOCAL_API_BASE_URL || '').trim());
 const onlineApiBaseUrl = stripTrailingSlash(
   (mergedEnv.ANGULAR_ONLINE_API_BASE_URL || 'https://krwvpdmpgw.us-east-1.awsapprunner.com').trim()

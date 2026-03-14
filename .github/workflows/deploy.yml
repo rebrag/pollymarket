@@ -26,6 +26,9 @@ jobs:
       run: npm ci
 
     - name: Build Angular App
+      env:
+        ANGULAR_OFFLINE: 'false'
+        ANGULAR_ONLINE_API_BASE_URL: 'https://krwvpdmpgw.us-east-1.awsapprunner.com'
       run: npm run build -- --configuration production
 
     - name: Configure AWS Credentials
@@ -37,3 +40,7 @@ jobs:
 
     - name: Deploy to S3
       run: aws s3 sync dist/frontend/browser/ s3://sweattheline --delete
+
+    - name: Invalidate CloudFront
+      if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+      run: aws cloudfront create-invalidation --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"

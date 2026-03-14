@@ -45,6 +45,7 @@ The frontend reads `ANGULAR_OFFLINE` from `.env` (repo root or `frontend/.env`) 
 
 - `ANGULAR_OFFLINE=true` -> use local API (default `apiBaseUrl=''`, through Angular proxy)
 - `ANGULAR_OFFLINE=false` -> use hosted API (`ANGULAR_ONLINE_API_BASE_URL`)
+- If `ANGULAR_OFFLINE` is not set, local runs default to proxy mode and CI builds default to hosted API mode.
 
 Optional variables:
 
