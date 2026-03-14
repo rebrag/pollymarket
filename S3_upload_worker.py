@@ -5,16 +5,16 @@ from botocore.exceptions import NoCredentialsError, ClientError
 from dotenv import load_dotenv
 load_dotenv()
 
-OFFLINE_MODE: bool = os.environ.get("OFFLINE_MODE", "True").lower() == "true"
+UPLOAD_WORKER_OFFLINE_MODE: bool = os.environ.get("UPLOAD_WORKER_OFFLINE_MODE", "True").lower() == "true"
 S3_BUCKET_NAME: str = os.environ.get("S3_BUCKET_NAME", "")
 
-print(f"\n--- S3 UPLOAD WORKER INITIALIZED | OFFLINE_MODE: {OFFLINE_MODE} ---\n")
+print(f"\n--- S3 UPLOAD WORKER INITIALIZED | OFFLINE_MODE: {UPLOAD_WORKER_OFFLINE_MODE} ---\n")
 
-if not OFFLINE_MODE and not S3_BUCKET_NAME:
+if not UPLOAD_WORKER_OFFLINE_MODE and not S3_BUCKET_NAME:
     raise ValueError("S3_BUCKET_NAME environment variable is strictly required when OFFLINE_MODE is False.")
 
 def verify_aws_credentials() -> None:
-    if OFFLINE_MODE:
+    if UPLOAD_WORKER_OFFLINE_MODE:
         return
     try:
         sts = boto3.client("sts")
@@ -25,7 +25,7 @@ def verify_aws_credentials() -> None:
 
 verify_aws_credentials()
 
-s3_client = boto3.client("s3") if not OFFLINE_MODE else None
+s3_client = boto3.client("s3") if not UPLOAD_WORKER_OFFLINE_MODE else None
 upload_queue: asyncio.Queue[str] = asyncio.Queue()
 
 def upload_to_s3_and_delete(file_path: str, bucket: str, object_name: str) -> None:
@@ -39,7 +39,7 @@ def upload_to_s3_and_delete(file_path: str, bucket: str, object_name: str) -> No
     os.remove(file_path)
 
 async def s3_upload_worker() -> None:
-    if OFFLINE_MODE:
+    if UPLOAD_WORKER_OFFLINE_MODE:
         return
 
     while True:

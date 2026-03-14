@@ -21,12 +21,12 @@ Run API:
 
 Environment variables:
 
-- `DATA_SOURCE=local|s3` (default: `local`)
+- `DATA_SOURCE=LOCAL|S3` (case-insensitive, default: `local`)
 - `LOCAL_DATA_ROOT=./market_data`
 - `DATA_CACHE_TTL_SECONDS=15`
 - `INCLUDE_PART_FILES=false` (default: hidden)
-- `AWS_REGION=us-east-1`
-- `S3_BUCKET=...` (required when `DATA_SOURCE=s3`)
+- `AWS_REGION=us-east-1` (or `AWS_DEFAULT_REGION`)
+- `S3_BUCKET=...` (or `S3_BUCKET_NAME`, required when `DATA_SOURCE=s3`)
 - `S3_PREFIX=optional/path`
 
 ## Frontend setup
@@ -62,7 +62,7 @@ Angular dev server runs on `http://localhost:4200` and proxies `/api/*` to `http
 
 ```powershell
 $env:DATA_SOURCE='s3'
-$env:S3_BUCKET='your-bucket'
+$env:S3_BUCKET='your-bucket' # or set S3_BUCKET_NAME
 $env:S3_PREFIX='optional/prefix'
 $env:AWS_REGION='us-east-1'
 ```

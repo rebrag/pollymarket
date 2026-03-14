@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 from models import ( WSPayload,Event, Market, Orderbook,BookEvent, PriceChangeEvent,LastTradePriceEvent,AssetUpdate)
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
 from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata
-from S3_upload_worker import upload_queue, s3_upload_worker, OFFLINE_MODE
+from S3_upload_worker import upload_queue, s3_upload_worker, UPLOAD_WORKER_OFFLINE_MODE
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -298,7 +298,7 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
 async def process_export_and_upload(asset_id: str, meta: MarketMetadata) -> None:
     try:
         file_path: str = await asyncio.to_thread(logger_service.export_and_cleanup, asset_id, meta)
-        if not OFFLINE_MODE:
+        if not UPLOAD_WORKER_OFFLINE_MODE:
             await upload_queue.put(file_path)
     except ValueError as e:
         print(f"Export skipped for {asset_id}: {e}")
@@ -307,7 +307,7 @@ async def main() -> None:
     events: list[Event] = fetch_and_filter_gamma_events()
     orderbooks: dict[str, Orderbook] = create_orderbooks(events)
     print(f"Successfully generated {len(orderbooks)} orderbook skeletons.")
-    if not OFFLINE_MODE:
+    if not UPLOAD_WORKER_OFFLINE_MODE:
         asyncio.create_task(s3_upload_worker())
     await start_ws(orderbooks)
 

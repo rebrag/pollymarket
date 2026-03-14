@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from functools import lru_cache
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -24,12 +25,40 @@ app = FastAPI(title="Parquet Explorer API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200", "http://127.0.0.1:4200"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+async def warm_s3_cache() -> None:
+    try:
+        settings: Settings = get_settings()
+        catalog: MarketCatalogService = _build_catalog(
+            settings.data_source,
+            settings.local_data_root,
+            settings.aws_region,
+            settings.s3_bucket,
+            settings.s3_prefix,
+            settings.cache_ttl_seconds,
+            settings.include_part_files,
+        )
+        catalog.list_events()
+    except Exception as exc:
+        print(f"[API] CRITICAL: Failed to warm cache: {exc}")
+
+@app.on_event("startup")
+def startup_event() -> None:
+    settings: Settings = get_settings()
+    mode: str = settings.data_source.upper()
+    
+    if settings.data_source == "local":
+        print(f"[API] DATA_SOURCE={mode} LOCAL_DATA_ROOT={settings.local_data_root}")
+    else:
+        prefix: str = settings.s3_prefix or "(root)"
+        print(f"[API] DATA_SOURCE={mode} S3_BUCKET={settings.s3_bucket} S3_PREFIX={prefix}")
+        
+    asyncio.create_task(warm_s3_cache())
 
 @lru_cache(maxsize=1)
 def _build_catalog(
@@ -52,7 +81,6 @@ def _build_catalog(
         )
     return MarketCatalogService(source, cache_ttl_seconds=cache_ttl_seconds)
 
-
 def get_catalog(settings: Settings = Depends(get_settings)) -> MarketCatalogService:
     return _build_catalog(
         settings.data_source,
@@ -64,16 +92,13 @@ def get_catalog(settings: Settings = Depends(get_settings)) -> MarketCatalogServ
         settings.include_part_files,
     )
 
-
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
-
 @app.get("/api/v1/events", response_model=list[EventSummary])
 def list_events(catalog: MarketCatalogService = Depends(get_catalog)) -> list[EventSummary]:
     return catalog.list_events()
-
 
 @app.get("/api/v1/markets", response_model=PaginatedResponse[MarketSummary])
 def list_markets(
@@ -83,14 +108,13 @@ def list_markets(
     offset: int = Query(default=0, ge=0),
     catalog: MarketCatalogService = Depends(get_catalog),
 ) -> PaginatedResponse[MarketSummary]:
-    items = catalog.list_markets(event_slug=event_slug, query=q)
+    items: list[MarketSummary] = catalog.list_markets(event_slug=event_slug, query=q)
     return PaginatedResponse[MarketSummary](
         items=items[offset : offset + limit],
         total=len(items),
         limit=limit,
         offset=offset,
     )
-
 
 @app.get("/api/v1/markets/{market_id}/metadata", response_model=MarketMetadataDto)
 def get_metadata(
@@ -101,7 +125,6 @@ def get_metadata(
         return catalog.get_metadata(market_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="market_id not found") from exc
-
 
 @app.get("/api/v1/markets/{market_id}/rows", response_model=PaginatedResponse[MarketRow])
 def get_rows(
@@ -117,7 +140,6 @@ def get_rows(
 
     return PaginatedResponse[MarketRow](items=rows, total=total, limit=limit, offset=offset)
 
-
 @app.get("/api/v1/markets/{market_id}/series", response_model=list[MarketSeriesPoint])
 def get_series(
     market_id: str,
@@ -129,16 +151,15 @@ def get_series(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="market_id not found") from exc
 
-    ts = [float(v) for v in table.column("timestamp").to_pylist()]
-    bids = [float(v) for v in table.column("best_bid").to_pylist()]
-    asks = [float(v) for v in table.column("best_ask").to_pylist()]
+    ts: list[float] = [float(v) for v in table.column("timestamp").to_pylist()]
+    bids: list[float] = [float(v) for v in table.column("best_bid").to_pylist()]
+    asks: list[float] = [float(v) for v in table.column("best_ask").to_pylist()]
 
-    idx = sample_indices(len(ts), max_points=max_points)
+    idx: list[int] = sample_indices(len(ts), max_points=max_points)
     return [
         MarketSeriesPoint(timestamp=ts[i], best_bid=bids[i], best_ask=asks[i])
         for i in idx
     ]
-
 
 @app.get("/api/v1/markets/{market_id}/stats", response_model=MarketStats)
 def get_stats(
