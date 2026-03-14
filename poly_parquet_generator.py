@@ -15,6 +15,9 @@ from zoneinfo import ZoneInfo
 from models import ( WSPayload,Event, Market, Orderbook,BookEvent, PriceChangeEvent,LastTradePriceEvent,AssetUpdate)
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
 from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata
+from S3_upload_worker import upload_queue, s3_upload_worker, OFFLINE_MODE
+from dotenv import load_dotenv
+load_dotenv()
 
 
 logger_service: HistoryLogger = HistoryLogger(export_dir="./market_data")
@@ -158,7 +161,7 @@ async def finalize_asset(ws: ClientConnection, asset_id: str, orderbooks: dict[s
     await ws.send(get_unsubscribe_msg([asset_id]))
     inactive_assets.add(asset_id)
     meta: MarketMetadata = market_metadata_from_book(book)
-    asyncio.create_task(asyncio.to_thread(logger_service.export_and_cleanup, asset_id, meta))
+    asyncio.create_task(process_export_and_upload(asset_id, meta))
     orderbooks.pop(asset_id, None)
     print(f"Unsubscribed from {meta.market_question} | orderbooks now: {len(orderbooks)}")
 
@@ -292,10 +295,20 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
             for ev_type, count in unhandled_events.items():
                 print(f"{ev_type}: {count}")
 
+async def process_export_and_upload(asset_id: str, meta: MarketMetadata) -> None:
+    try:
+        file_path: str = await asyncio.to_thread(logger_service.export_and_cleanup, asset_id, meta)
+        if not OFFLINE_MODE:
+            await upload_queue.put(file_path)
+    except ValueError as e:
+        print(f"Export skipped for {asset_id}: {e}")
+
 async def main() -> None:
     events: list[Event] = fetch_and_filter_gamma_events()
     orderbooks: dict[str, Orderbook] = create_orderbooks(events)
     print(f"Successfully generated {len(orderbooks)} orderbook skeletons.")
+    if not OFFLINE_MODE:
+        asyncio.create_task(s3_upload_worker())
     await start_ws(orderbooks)
 
 if __name__ == "__main__":

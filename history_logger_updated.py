@@ -265,21 +265,16 @@ class HistoryLogger:
           - Remove in-memory state for asset_id
         """
         with self._lock_for(asset_id):
-            if asset_id not in self._history:
-                # Even if we're not tracking in memory, compaction can still be useful if parts exist.
-                pass
+            pass
 
-        # Flush in-memory snapshots to a part file (if any).
-        part_path = self.export_part(asset_id, metadata)
+        part_path: str | None = self.export_part(asset_id, metadata)
         if part_path is not None:
             print(f"Writing parquet part for {metadata.market_question}")
 
-        # Compact parts into one final file.
-        final_path = self.compact_market(metadata, delete_parts=True)
+        final_path: str | None = self.compact_market(metadata, delete_parts=True)
         if final_path is not None:
             print(f"Writing parquet for {metadata.market_question}")
 
-        # Remove in-memory history + bookkeeping.
         with self._lock_for(asset_id):
             if asset_id in self._history:
                 del self._history[asset_id]
@@ -287,3 +282,8 @@ class HistoryLogger:
                 del self._locks[asset_id]
             if asset_id in self._part_seq:
                 del self._part_seq[asset_id]
+
+        if final_path is None:
+            raise ValueError(f"No parquet files generated or found for compaction: {asset_id}")
+
+        return final_path
