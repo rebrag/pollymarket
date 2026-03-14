@@ -39,6 +39,18 @@ npm start
 
 Angular dev server runs on `http://localhost:4200` and proxies `/api/*` to `http://localhost:8000`.
 
+### Frontend API source toggle
+
+The frontend reads `ANGULAR_OFFLINE` from `.env` (repo root or `frontend/.env`) before `npm start` / `npm build`.
+
+- `ANGULAR_OFFLINE=true` -> use local API (default `apiBaseUrl=''`, through Angular proxy)
+- `ANGULAR_OFFLINE=false` -> use hosted API (`ANGULAR_ONLINE_API_BASE_URL`)
+
+Optional variables:
+
+- `ANGULAR_LOCAL_API_BASE_URL=` (default empty string for proxy mode)
+- `ANGULAR_ONLINE_API_BASE_URL=https://krwvpdmpgw.us-east-1.awsapprunner.com`
+
 ## API endpoints
 
 - `GET /health`

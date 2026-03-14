@@ -1,4 +1,7 @@
 export const environment = {
   production: false,
-  apiBaseUrl: '',
+  angularOffline: false,
+  localApiBaseUrl: '',
+  onlineApiBaseUrl: 'https://krwvpdmpgw.us-east-1.awsapprunner.com',
+  apiBaseUrl: 'https://krwvpdmpgw.us-east-1.awsapprunner.com',
 };

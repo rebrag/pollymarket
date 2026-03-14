@@ -2,6 +2,10 @@
   "name": "frontend",
   "version": "0.0.0",
   "scripts": {
+    "prepare-env": "node scripts/generate-environment.cjs",
+    "prestart": "npm run prepare-env",
+    "prebuild": "npm run prepare-env",
+    "prewatch": "npm run prepare-env",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
