@@ -44,5 +44,5 @@ jobs:
       run: aws s3 sync dist/frontend/browser/ s3://sweattheline --delete
 
     - name: Invalidate CloudFront
-      if: ${{ env.CLOUDFRONT_DISTRIBUTION_ID != '' }}
-      run: aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths "/*"
+      if: ${{ env.EAB0CA5SUA5A8 != '' }}
+      run: aws cloudfront create-invalidation --distribution-id "$EAB0CA5SUA5A8" --paths "/*"
