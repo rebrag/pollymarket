@@ -8,6 +8,7 @@ import boto3
 import pyarrow as pa
 import pyarrow.parquet as pq
 from botocore.exceptions import ClientError
+import json
 
 from .base import ParquetObject
 
@@ -21,6 +22,16 @@ class S3ParquetDataSource:
         self.prefix: str = prefix.strip("/")
         self.client = boto3.client("s3", region_name=region)
         self.include_part_files: bool = include_part_files
+
+    def get_master_index(self) -> list[dict[str, str]]:
+        try:
+            obj = self.client.get_object(Bucket=self.bucket, Key="market_index.json")
+            payload: bytes = obj["Body"].read()
+            return json.loads(payload.decode("utf-8"))
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                return []
+            raise RuntimeError(f"Failed to fetch market_index.json: {e}") from e
 
     @staticmethod
     def _stable_id(object_key: str) -> str:
@@ -38,6 +49,8 @@ class S3ParquetDataSource:
     def _strip_prefix(self, key: str) -> str:
         prefix: str = self._full_prefix()
         return key[len(prefix):] if prefix and key.startswith(prefix) else key
+    
+    
 
     @lru_cache(maxsize=2048)
     def _read_object_bytes(self, object_key: str) -> bytes:
