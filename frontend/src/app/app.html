@@ -1,3 +1,30 @@
-<main class="app-shell">
-  <router-outlet></router-outlet>
-</main>
+<div class="app-shell">
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a routerLink="/" class="brand-mark" aria-label="Go to homepage">
+        <img
+          src="sweattheline_logo.png"
+          alt="Sweat The Line"
+          class="block h-auto max-w-full sm:w-40 lg:w-80 rounded-lg select-none"
+        />
+      </a>
+
+      <nav class="primary-nav" aria-label="Primary">
+        @for (item of navItems; track item.label) {
+          <a
+            [routerLink]="item.href"
+            routerLinkActive="primary-nav__link--active"
+            [routerLinkActiveOptions]="{ exact: item.href === '/' }"
+            class="primary-nav__link"
+          >
+            {{ item.label }}
+          </a>
+        }
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

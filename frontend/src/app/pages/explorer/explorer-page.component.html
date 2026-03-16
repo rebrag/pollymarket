@@ -1,74 +1,180 @@
-<section class="page">
-  <header class="page-header">
-    <h1>Parquet Market Explorer</h1>
-    <p>Browse local parquet snapshots now, then switch backend source to S3 later.</p>
-  </header>
+<section class="homepage">
+  <!-- <section class="promo-bar">
+    <div class="promo-copy">
+      <span class="promo-badge">STL</span>
+      <p>
+        <strong>PLACEHOLDER</strong>
+        PLACEHOLDER for future tools, leaderboards, and analytics modules.
+      </p>
+    </div>
+    <button type="button" class="promo-button">Learn More</button>
+  </section> -->
 
-  <section class="filters">
-    <label>
-      Search
-      <input [(ngModel)]="search" (keyup.enter)="applyFilters()" placeholder="Question or file name" />
-    </label>
+  <section class="hero-panel mb-0">
+    <div class="hero-copy">
+      <p class="eyebrow">Prediction market intelligence</p>
+      <h1>PLACEHOLDER Data & Analytics</h1>
+      <p class="hero-description">
+        PLACEHOLDER for trader dashboards, market monitoring, historical snapshots, and execution tooling.
+      </p>
+    </div>
 
-    <button type="button" (click)="applyFilters()">Apply</button>
+    <div class="hero-grid">
+      <div class="stats-column">
+        @for (stat of heroStats; track stat.label) {
+          <article class="stat-card">
+            <div class="stat-icon" [class]="stat.accent"></div>
+            <p>{{ stat.label }}</p>
+            <strong>{{ stat.value }}</strong>
+          </article>
+        }
+      </div>
+
+      <article class="activity-panel">
+        <div class="panel-header">
+          <h2>Market Activity</h2>
+          <div class="panel-tabs">
+            <span class="tab active">Recently Started</span>
+            <span class="tab">Ending Soon</span>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <span class="chip chip-active">All</span>
+          <span class="chip">Politics</span>
+          <span class="chip">Crypto</span>
+          <span class="chip">Sports</span>
+        </div>
+
+        <div class="activity-list">
+          @for (item of marketActivity; track item.title + item.meta) {
+            <div class="activity-item">
+              <div>
+                <p>{{ item.title }}</p>
+                <span>{{ item.meta }}</span>
+              </div>
+              <strong>{{ item.value }}</strong>
+            </div>
+          }
+        </div>
+      </article>
+
+      <article class="activity-panel">
+        <div class="panel-header">
+          <h2>Trader Activity</h2>
+          <div class="panel-tabs">
+            <span class="tab active">Biggest Wins</span>
+            <span class="tab">Biggest Losses</span>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <span class="chip chip-active">1D</span>
+          <span class="chip">1W</span>
+          <span class="chip">1M</span>
+        </div>
+
+        <div class="activity-list">
+          @for (item of traderActivity; track item.title + item.value) {
+            <div class="activity-item">
+              <div>
+                <p>{{ item.title }}</p>
+                <span>{{ item.meta }}</span>
+              </div>
+              <strong class="positive">{{ item.value }}</strong>
+            </div>
+          }
+        </div>
+      </article>
+    </div>
   </section>
 
-  <p *ngIf="error" class="error">{{ error }}</p>
-  <p *ngIf="loading" class="state">Loading events...</p>
-  <p *ngIf="!loading && !error && filteredEvents().length === 0" class="state">No events found.</p>
+  <!-- <section class="brand-strip">
+    <span>Cited by: PLACEHOLDER</span>
+    <span>Powered by: PLACEHOLDER</span>
+    <span>Supported by: PLACEHOLDER</span>
+  </section> -->
 
-  <section *ngIf="!loading && !error && filteredEvents().length > 0" class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Event</th>
-          <th>Markets</th>
-        </tr>
-      </thead>
-      <tbody>
-        <ng-container *ngFor="let event of filteredEvents()">
-          <tr class="event-row" (click)="toggleEvent(event.event_slug)">
-            <td>
-              <button type="button" class="expand-btn">
-                {{ isExpanded(event.event_slug) ? 'v' : '>' }}
-                <span class="event-start">
-                  {{ event.game_start_time > 0 ? (event.game_start_time * 1000 | date: 'M/d h:mm a') : '--' }}
-                </span>
-                <span>{{ event.event_title }}</span>
-              </button>
-            </td>
-            <td>{{ event.market_count }}</td>
-          </tr>
+  <section class="market-prices-panel">
+    <div class="market-prices-header">
+      <div>
+        <h2>Market Prices</h2>
+        <p>Live explorer results from your backend.</p>
+      </div>
+    </div>
 
-          <tr *ngIf="isExpanded(event.event_slug)" class="child-row">
-            <td colspan="2">
-              <p *ngIf="isEventLoading(event.event_slug)" class="state">Loading markets...</p>
-              <p *ngIf="!isEventLoading(event.event_slug) && marketsForEvent(event.event_slug).length === 0" class="state">
-                No markets found for this event.
-              </p>
+    <div class="explorer-toolbar">
+      <label class="toolbar-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M10.5 4a6.5 6.5 0 1 0 4.032 11.6l4.434 4.434 1.414-1.414-4.434-4.434A6.5 6.5 0 0 0 10.5 4Z"
+          />
+        </svg>
+        <input
+          [value]="search()"
+          (input)="onSearchInput($event)"
+          (keyup.enter)="applyFilters()"
+          placeholder="Search markets, events, outcomes"
+        />
+      </label>
 
-              <table *ngIf="!isEventLoading(event.event_slug) && marketsForEvent(event.event_slug).length > 0" class="child-table">
-                <thead>
-                  <tr>
-                    <th>Market</th>
-                    <th>Rows</th>
-                    <th>Open</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let market of marketsForEvent(event.event_slug)">
-                    <td>{{ market.market_question }}</td>
-                    <td>{{ market.row_count }}</td>
-                    <td>
-                      <a [routerLink]="['/markets', market.market_id]">View</a>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        </ng-container>
-      </tbody>
-    </table>
+      <div class="toolbar-filters">
+        <span class="chip chip-active">Politics</span>
+        <span class="chip">Crypto</span>
+        <span class="chip">Sports</span>
+        <button type="button" class="ghost-button" (click)="applyFilters()">Apply</button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <p class="message error-message">{{ error() }}</p>
+    } @else if (loading()) {
+      <p class="message">Loading events...</p>
+    } @else if (filteredEvents().length === 0) {
+      <p class="message">No events found.</p>
+    } @else {
+      <div class="events-table">
+        <div class="events-table-header">
+          <span>Market</span>
+          <span>Markets</span>
+        </div>
+
+        @for (event of filteredEvents(); track trackByEventSlug($index, event)) {
+          <article class="event-card">
+            <button type="button" class="event-summary" (click)="toggleEvent(event.event_slug)">
+              <div class="event-main">
+                <span class="event-toggle">{{ isExpanded(event.event_slug) ? '−' : '+' }}</span>
+                <div>
+                  <p>{{ event.event_title }}</p>
+                  <span>
+                    {{ event.game_start_time > 0 ? (event.game_start_time * 1000 | date: 'M/d h:mm a') : 'Schedule TBD' }}
+                  </span>
+                </div>
+              </div>
+              <span class="event-count">{{ event.market_count }}</span>
+            </button>
+
+            @if (isExpanded(event.event_slug)) {
+              <div class="market-list">
+                @if (isEventLoading(event.event_slug)) {
+                  <p class="message">Loading markets...</p>
+                } @else if (marketsForEvent(event.event_slug).length === 0) {
+                  <p class="message">No markets found for this event.</p>
+                } @else {
+                  @for (market of marketsForEvent(event.event_slug); track market.market_id) {
+                    <a class="market-row" [routerLink]="['/markets', market.market_id]">
+                      <div class="market-row__content">
+                        <p>{{ market.market_question }}</p>
+                        <!-- <span>{{ market.row_count }} rows</span> -->
+                      </div>
+                    </a>
+                  }
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
   </section>
 </section>

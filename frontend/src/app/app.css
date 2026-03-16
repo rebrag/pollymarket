@@ -1,4 +1,46 @@
 .app-shell {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
+  background: transparent;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 0.3rem 1.25rem;
+}
+
+.app-content {
+  min-height: calc(100vh - 73px);
+}
+
+.primary-nav__link {
+  color: #475569;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.primary-nav__link--active {
+  color: #0f172a;
+}
+
+@media (max-width: 720px) {
+  .site-header__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.75rem 0.85rem;
+  }
 }
