@@ -43,7 +43,7 @@ async def warm_s3_cache() -> None:
             settings.cache_ttl_seconds,
             settings.include_part_files,
         )
-        catalog.list_events()
+        await asyncio.to_thread(catalog.list_events)
     except Exception as exc:
         print(f"[API] CRITICAL: Failed to warm cache: {exc}")
 

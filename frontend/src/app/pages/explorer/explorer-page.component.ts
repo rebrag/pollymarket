@@ -64,7 +64,7 @@ export class ExplorerPageComponent implements OnInit {
     };
 
     if (!q) {
-      return [...this.events].sort(compareByGameStart);
+      return [...this.events].sort(compareByGameStart).reverse();
     }
 
     return this.events
