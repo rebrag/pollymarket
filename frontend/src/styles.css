@@ -517,7 +517,7 @@ button:disabled {
   color: #991b1b;
 }
 
-@media (max-width: 1120px) {
+/* @media (max-width: 1120px) {
   .primary-nav {
     justify-content: flex-start;
   }
@@ -556,4 +556,4 @@ button:disabled {
     align-items: flex-start;
     flex-direction: column;
   }
-}
+} */

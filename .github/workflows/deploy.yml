@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+      S3_BUCKET_NAME: sweattheline
 
     defaults:
       run:
@@ -40,9 +41,60 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
+    - name: Validate deploy configuration
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ -z "${CLOUDFRONT_DISTRIBUTION_ID:-}" ]; then
+          echo "::error title=Missing CloudFront distribution ID::Set the CLOUDFRONT_DISTRIBUTION_ID GitHub Actions secret to your CloudFront distribution ID (for example, E3B0CA5SUA5A8)."
+          exit 1
+        fi
+
     - name: Deploy to S3
-      run: aws s3 sync dist/frontend/browser/ s3://sweattheline --delete
+      run: aws s3 sync dist/frontend/browser/ s3://$S3_BUCKET_NAME --delete
+
+    - name: Configure S3 website fallback
+      run: aws s3 website s3://$S3_BUCKET_NAME --index-document index.html --error-document index.html
+
+    - name: Configure CloudFront SPA fallback
+      working-directory: .
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        aws cloudfront get-distribution-config \
+          --id "$CLOUDFRONT_DISTRIBUTION_ID" \
+          --output json > cf-config.json
+
+        ETAG="$(jq -r '.ETag' cf-config.json)"
+
+        jq '
+          .DistributionConfig.CustomErrorResponses = {
+            Quantity: 2,
+            Items: [
+              {
+                ErrorCode: 403,
+                ResponsePagePath: "/index.html",
+                ResponseCode: "200",
+                ErrorCachingMinTTL: 0
+              },
+              {
+                ErrorCode: 404,
+                ResponsePagePath: "/index.html",
+                ResponseCode: "200",
+                ErrorCachingMinTTL: 0
+              }
+            ]
+          }
+        ' cf-config.json > cf-config-updated.json
+
+        jq '.DistributionConfig' cf-config-updated.json > cf-distribution-config.json
+
+        aws cloudfront update-distribution \
+          --id "$CLOUDFRONT_DISTRIBUTION_ID" \
+          --if-match "$ETAG" \
+          --distribution-config file://cf-distribution-config.json
 
     - name: Invalidate CloudFront
-      if: ${{ env.EAB0CA5SUA5A8 != '' }}
-      run: aws cloudfront create-invalidation --distribution-id "$EAB0CA5SUA5A8" --paths "/*"
+      run: aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths "/*"
