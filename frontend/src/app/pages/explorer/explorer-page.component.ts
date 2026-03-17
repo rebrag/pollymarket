@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -20,7 +19,7 @@ interface ActivityItem {
 @Component({
   selector: 'app-explorer-page',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [RouterLink],
   templateUrl: './explorer-page.component.html',
   styleUrl: './explorer-page.component.css',
 })
@@ -28,12 +27,7 @@ export class ExplorerPageComponent implements OnInit {
   private readonly api = inject(MarketApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-
-  readonly heroStats: readonly HeroStat[] = [
-    { label: 'PLACEHOLDER', value: '2,413,137', accent: 'from-sky-500/30 to-cyan-400/10' },
-    { label: 'PLACEHOLDER', value: '210,860', accent: 'from-emerald-500/30 to-teal-400/10' },
-    { label: 'PLACEHOLDER', value: '139,894,409', accent: 'from-orange-500/30 to-amber-400/10' },
-  ];
+  private readonly numberFormatter = new Intl.NumberFormat('en-US');
 
   readonly marketActivity: readonly ActivityItem[] = [
     { title: 'PLACEHOLDER', meta: '25m ago', value: '$0' },
@@ -57,6 +51,16 @@ export class ExplorerPageComponent implements OnInit {
   readonly search = signal<string>('');
   readonly loading = signal<boolean>(false);
   readonly error = signal<string>('');
+
+  readonly heroStats = computed((): readonly HeroStat[] => [
+    {
+      label: 'Events Recorded',
+      value: this.numberFormatter.format(this.events().length),
+      accent: 'from-sky-500/30 to-cyan-400/10',
+    },
+    { label: 'PLACEHOLDER', value: '210,860', accent: 'from-emerald-500/30 to-teal-400/10' },
+    { label: 'PLACEHOLDER', value: '139,894,409', accent: 'from-orange-500/30 to-amber-400/10' },
+  ]);
 
   readonly filteredEvents = computed((): EventSummary[] => {
     const q = this.search().trim().toLowerCase();

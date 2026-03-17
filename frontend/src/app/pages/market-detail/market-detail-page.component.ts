@@ -12,6 +12,7 @@ import {
   LineElement,
   PointElement,
   LinearScale,
+  ScatterDataPoint,
   Tooltip,
   Legend,
   CategoryScale,
@@ -71,6 +72,7 @@ export class MarketDetailPageComponent implements OnInit {
   outcome1Label = 'Outcome 1';
   outcome2Label = 'Outcome 2';
   currentSeriesPoints: MarketSeriesPoint[] = [];
+  firstSeriesTimestampMs = 0;
 
   limit = 100;
   offset = 0;
@@ -84,8 +86,7 @@ export class MarketDetailPageComponent implements OnInit {
   loadingRelatedMarkets = false;
   relatedMarketsError = '';
 
-  chartData: ChartData<'line'> = {
-    labels: [],
+  chartData: ChartData<'line', ScatterDataPoint[]> = {
     datasets: [
       { data: [], label: 'Outcome 1', borderColor: '#0b6b36', tension: 0.15, pointRadius: 0 },
       { data: [], label: 'Outcome 2', borderColor: '#8f1f1f', tension: 0.15, pointRadius: 0 },
@@ -97,6 +98,21 @@ export class MarketDetailPageComponent implements OnInit {
     responsive: true,
     animation: false,
     scales: {
+      x: {
+        type: 'linear',
+        min: 0,
+        ticks: {
+          callback: (value): string => {
+            const actualTimestampMs = this.firstSeriesTimestampMs + Number(value);
+            return new Date(actualTimestampMs).toLocaleTimeString([], {
+              hour: 'numeric',
+              minute: '2-digit',
+            });
+          },
+          maxRotation: 45,
+          minRotation: 45,
+        },
+      },
       y: {
         min: 0,
         max: 1,
@@ -107,6 +123,36 @@ export class MarketDetailPageComponent implements OnInit {
       tooltip: {
         mode: 'index',
         intersect: false,
+        callbacks: {
+          title: (items): string => {
+            const firstItem = items[0];
+            const xValue = firstItem?.parsed.x;
+            if (xValue == null) {
+              return '';
+            }
+
+            const pointIndex = firstItem.dataIndex;
+            const actualTimestampMs = this.currentSeriesPoints[pointIndex]?.timestamp
+              ? this.currentSeriesPoints[pointIndex].timestamp * 1000
+              : null;
+
+            if (actualTimestampMs == null) {
+              return new Date(this.firstSeriesTimestampMs + xValue).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              });
+            }
+
+            return new Date(actualTimestampMs).toLocaleString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            });
+          },
+        },
       },
     },
     interaction: {
@@ -157,6 +203,10 @@ export class MarketDetailPageComponent implements OnInit {
       return '';
     }
     return assetId.length <= 5 ? assetId : `${assetId.slice(0, 5)}...`;
+  }
+
+  shouldAnimateTitle(title: string): boolean {
+    return title.trim().length > 56;
   }
 
   async copyAssetId(): Promise<void> {
@@ -252,59 +302,63 @@ export class MarketDetailPageComponent implements OnInit {
 
   private setChartData(points: MarketSeriesPoint[]): void {
     this.currentSeriesPoints = points;
+    const firstTimestamp = points[0]?.timestamp ?? 0;
+    this.firstSeriesTimestampMs = firstTimestamp * 1000;
 
-    // this.chartData = {
-    //   labels: points.map((p) => new Date(p.timestamp * 1000).toLocaleTimeString()),
-    //   datasets: [
-    //     {
-    //       data: points.map((p) => p.best_bid),
-    //       label: this.outcome1Label,
-    //       borderColor: '#0b6b36',
-    //       pointRadius: 0,
-    //       tension: 0.15,
-    //     },
-    //     {
-    //       data: points.map((p) => 1.0 - p.best_ask),
-    //       label: this.outcome2Label,
-    //       borderColor: '#8f1f1f',
-    //       pointRadius: 0,
-    //       tension: 0.15,
-    //     },
-    //     {
-    //       data: points.map((p) => p.best_ask - p.best_bid),
-    //       label: 'Spread (Ask - Bid)',
-    //       borderColor: '#0f172a',
-    //       pointRadius: 0,
-    //       tension: 0.15,
-    //     },
-    //   ],
-    // };
+    const chartPoints = points.map((point): ScatterDataPoint => ({
+      x: (point.timestamp - firstTimestamp) * 1000,
+      y: point.best_ask,
+    }));
+    const invertedChartPoints = points.map((point): ScatterDataPoint => ({
+      x: (point.timestamp - firstTimestamp) * 1000,
+      y: 1.0 - point.best_bid,
+    }));
+    const spreadPoints = points.map((point): ScatterDataPoint => ({
+      x: (point.timestamp - firstTimestamp) * 1000,
+      y: point.best_ask - point.best_bid,
+    }));
 
     this.chartData = {
-      labels: points.map((p) => new Date(p.timestamp * 1000).toLocaleTimeString()),
       datasets: [
         {
-          data: points.map((p) => p.best_ask),
+          data: chartPoints,
           label: this.outcome1Label,
           borderColor: '#0b6b36',
           pointRadius: 0,
           tension: 0.15,
         },
         {
-          data: points.map((p) => 1.0 - p.best_bid),
+          data: invertedChartPoints,
           label: this.outcome2Label,
           borderColor: '#8f1f1f',
           pointRadius: 0,
           tension: 0.15,
         },
         {
-          data: points.map((p) => p.best_ask - p.best_bid),
+          data: spreadPoints,
           label: 'Spread (Ask - Bid)',
           borderColor: '#0f172a',
           pointRadius: 0,
           tension: 0.15,
         },
       ],
+    };
+
+    const lastElapsedMs = chartPoints.at(-1)?.x ?? 0;
+    if (!this.chartOptions.scales?.['x']) {
+      throw new Error('Expected x-axis chart options to be configured.');
+    }
+
+    this.chartOptions = {
+      ...this.chartOptions,
+      scales: {
+        ...this.chartOptions.scales,
+        x: {
+          ...this.chartOptions.scales['x'],
+          min: 0,
+          max: lastElapsedMs,
+        },
+      },
     };
   }
 

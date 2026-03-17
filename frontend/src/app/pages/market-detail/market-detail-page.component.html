@@ -1,66 +1,177 @@
-<section class="page">
-  <a routerLink="/">Back to explorer</a>
-  <h1>Market Detail</h1>
+<section class="mx-auto flex w-full max-w-6xl flex-col gap-2.5 px-2 py-3 sm:px-3 lg:px-4">
+  <div class="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur">
+    <a
+      routerLink="/"
+      class="inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+    >
+      <span aria-hidden="true">←</span>
+      <span>Back to explorer</span>
+    </a>
 
-  <p *ngIf="error" class="error">{{ error }}</p>
-  <p *ngIf="loading" class="state">Loading...</p>
+    <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+      <div class="min-w-0">
+        <p class="text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-sky-700">Market Detail</p>
+        <div class="mt-0.5 overflow-hidden whitespace-nowrap" [attr.title]="metadata?.market_question ?? 'Loading market...'">
+          <h1
+            class="inline-block min-w-full whitespace-nowrap text-base font-bold tracking-tight text-slate-950 sm:text-lg"
+            [class.market-title-marquee]="shouldAnimateTitle(metadata?.market_question ?? '')"
+          >
+            {{ metadata?.market_question ?? 'Loading market...' }}
+          </h1>
+        </div>
+        @if (metadata) {
+          <p class="mt-1 max-w-3xl text-xs text-slate-600 sm:text-[0.82rem]">
+            {{ metadata.event_title }}
+          </p>
+        }
+      </div>
 
-  <section *ngIf="metadata" class="grid">
-    <article class="card">
-      <h2>Metadata</h2>
-      <p><strong>Event:</strong> {{ metadata.event_title }}</p>
-      <p><strong>Slug:</strong> {{ metadata.event_slug }}</p>
-      <p><strong>Question:</strong> {{ metadata.market_question }}</p>
-      <p><strong>Outcomes:</strong> {{ metadata.outcomes }}</p>
-      <p>
-        <strong>Asset ID:</strong>
-        <button type="button" class="copy-id-btn" (click)="copyAssetId()" [title]="metadata.asset_id">
-          {{ shortAssetId(metadata.asset_id) }}
-        </button>
-        <span *ngIf="copyStatus" class="copy-status">{{ copyStatus }}</span>
-      </p>
-      <p><strong>Tick size:</strong> {{ metadata.min_tick_size }}</p>
-      <p><strong>Min order size:</strong> {{ metadata.min_order_size }}</p>
-      <p><strong>Neg risk:</strong> {{ metadata.is_neg_risk }}</p>
-      <p><strong>Game start:</strong> {{ metadata.game_start_time * 1000 | date: 'medium' }}</p>
-    </article>
-
-    <article class="card" *ngIf="stats">
-      <h2>Stats</h2>
-      <p><strong>Rows:</strong> {{ stats.row_count }}</p>
-      <p><strong>First timestamp:</strong> {{ (stats.first_ts ?? 0) * 1000 | date: 'medium' }}</p>
-      <p><strong>Last timestamp:</strong> {{ (stats.last_ts ?? 0) * 1000 | date: 'medium' }}</p>
-      <p><strong>Best bid range:</strong> {{ stats.min_best_bid }} - {{ stats.max_best_bid }}</p>
-      <p><strong>Best ask range:</strong> {{ stats.min_best_ask }} - {{ stats.max_best_ask }}</p>
-    </article>
-  </section>
-
-  <section *ngIf="metadata" class="card">
-    <h2>Other Markets In Event</h2>
-    <p *ngIf="relatedMarketsError" class="error">{{ relatedMarketsError }}</p>
-    <p *ngIf="loadingRelatedMarkets" class="state">Loading event markets...</p>
-    <div *ngIf="!loadingRelatedMarkets && !relatedMarketsError && relatedMarkets.length > 0" class="event-market-picker">
-      <select [(ngModel)]="selectedRelatedMarketId">
-        <option *ngFor="let market of relatedMarkets" [value]="market.market_id">
-          {{ market.market_question }} ({{ market.row_count }} rows)
-        </option>
-      </select>
-      <button
-        type="button"
-        (click)="goToSelectedRelatedMarket()"
-        [disabled]="!selectedRelatedMarketId || selectedRelatedMarketId === marketId">
-        Open Market
-      </button>
+      <!-- @if (metadata) {
+        <div class="flex flex-wrap gap-1.5 lg:max-w-xs lg:justify-end">
+          <span class="inline-flex items-center rounded-full bg-slate-900 px-2.5 py-0.5 text-[0.65rem] font-semibold text-white">
+            {{ metadata.is_neg_risk ? 'Negative Risk' : 'Standard Risk' }}
+          </span>
+          <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
+            Tick {{ metadata.min_tick_size }}
+          </span>
+          <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+            Min {{ metadata.min_order_size }}
+          </span>
+        </div>
+      } -->
     </div>
-    <p *ngIf="!loadingRelatedMarkets && !relatedMarketsError && relatedMarkets.length === 0" class="state">
-      No other markets found for this event.
-    </p>
-  </section>
+  </div>
 
-  <section class="card">
-    <h2>Bid / Other Asset / Spread Series</h2>
-    <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions"></canvas>
-  </section>
+  @if (error) {
+    <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+      {{ error }}
+    </div>
+  }
+
+  @if (loading) {
+    <div class="rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-600 shadow-sm">
+      Loading market data...
+    </div>
+  }
+
+  @if (metadata) {
+    <section class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <article class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Metadata</p>
+            <h2 class="mt-0.5 text-xs font-bold text-slate-900">Market context</h2>
+          </div>
+          @if (copyStatus) {
+            <p class="mt-1.5 text-[0.62rem] font-semibold text-sky-700">{{ copyStatus }}</p>
+          }
+          <button
+            type="button"
+            class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.62rem] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+            (click)="copyAssetId()"
+            [title]="metadata.asset_id"
+          >
+            {{ shortAssetId(metadata.asset_id) }}
+          </button>
+        </div>
+
+        <dl class="mt-2.5 grid gap-1.5">
+          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Event</dt>
+            <dd class="mt-0.5 line-clamp-2 text-[0.72rem] font-medium text-slate-900">{{ metadata.event_title }}</dd>
+          </div>
+          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Start</dt>
+            <dd class="mt-0.5 text-[0.72rem] font-medium text-slate-900">{{ metadata.game_start_time * 1000 | date: 'MMM d, y, h:mm a' }}</dd>
+          </div>
+          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Outcomes</dt>
+            <dd class="mt-0.5 line-clamp-2 text-[0.72rem] font-medium text-slate-900">{{ metadata.outcomes }}</dd>
+          </div>
+        </dl>
+
+        
+      </article>
+
+      <!-- @if (stats) {
+        <article class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Stats</p>
+          <h2 class="mt-0.5 text-xs font-bold text-slate-900">Snapshot</h2>
+
+          <dl class="mt-2.5 grid grid-cols-2 gap-1.5">
+            <div class="rounded-lg bg-emerald-50 px-2.5 py-1.5">
+              <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">Rows</dt>
+              <dd class="mt-0.5 text-xs font-bold text-emerald-950">{{ stats.row_count }}</dd>
+            </div>
+            <div class="rounded-lg bg-sky-50 px-2.5 py-1.5">
+              <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-sky-700">Last seen</dt>
+              <dd class="mt-0.5 text-[0.7rem] font-medium text-sky-950">{{ (stats.last_ts ?? 0) * 1000 | date: 'shortDate' }}</dd>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+              <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Bid</dt>
+              <dd class="mt-0.5 text-[0.7rem] font-medium text-slate-900">{{ stats.min_best_bid }} - {{ stats.max_best_bid }}</dd>
+            </div>
+            <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+              <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Ask</dt>
+              <dd class="mt-0.5 text-[0.7rem] font-medium text-slate-900">{{ stats.min_best_ask }} - {{ stats.max_best_ask }}</dd>
+            </div>
+          </dl>
+        </article>
+      } -->
+
+      <article class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Event markets</p>
+        <h2 class="mt-0.5 text-xs font-bold text-slate-900">Related market</h2>
+
+        @if (relatedMarketsError) {
+          <p class="mt-2.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[0.72rem] font-medium text-rose-700">
+            {{ relatedMarketsError }}
+          </p>
+        } @else if (loadingRelatedMarkets) {
+          <p class="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.72rem] text-slate-600">
+            Loading event markets...
+          </p>
+        } @else if (relatedMarkets.length > 0) {
+          <div class="mt-2.5 flex flex-col gap-2">
+            <label class="text-[0.68rem] font-semibold text-slate-700">
+              <span class="mb-1 block">Other markets</span>
+              <select
+                [(ngModel)]="selectedRelatedMarketId"
+                class="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-[0.72rem] text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
+              >
+                @for (market of relatedMarkets; track market.market_id) {
+                  <option [value]="market.market_id">
+                    {{ market.market_question }} 
+                  </option>
+                } 
+              </select>
+            </label>
+
+            <!-- ({{ market.row_count }} rows) -->
+
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              (click)="goToSelectedRelatedMarket()"
+              [disabled]="!selectedRelatedMarketId || selectedRelatedMarketId === marketId"
+            >
+              Open Market
+            </button>
+          </div>
+        } @else {
+          <p class="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.72rem] text-slate-600">
+            No other markets found for this event.
+          </p>
+        }
+      </article>
+    </section>
+
+    <section>
+      <div class="min-h-[300px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
+        <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions"></canvas>
+      </div>
+    </section>
+  }
 
   <!-- <section class="card">
     <div class="raw-header">

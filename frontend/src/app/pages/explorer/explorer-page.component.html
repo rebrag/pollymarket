@@ -1,87 +1,103 @@
-<section class="homepage">
-  <!-- <section class="promo-bar">
-    <div class="promo-copy">
-      <span class="promo-badge">STL</span>
-      <p>
-        <strong>PLACEHOLDER</strong>
-        PLACEHOLDER for future tools, leaderboards, and analytics modules.
-      </p>
-    </div>
-    <button type="button" class="promo-button">Learn More</button>
-  </section> -->
-
-  <section class="hero-panel mb-0">
-    <div class="hero-copy">
-      <p class="eyebrow">Prediction market intelligence</p>
-      <h1>PLACEHOLDER Data & Analytics</h1>
-      <p class="hero-description">
+<section class="w-full px-0">
+  <section
+    class="mb-0 overflow-x-auto overflow-y-hidden bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.2),transparent_24rem),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.22),transparent_28rem),linear-gradient(180deg,#111827_0%,#020617_100%)] px-5 py-4 text-white sm:px-6 lg:px-8"
+  >
+    <div class="w-full">
+      <p class="mb-1 text-[0.68rem] uppercase tracking-[0.16em] text-sky-300">Prediction market intelligence</p>
+      <h1 class="text-[clamp(1.65rem,2.5vw,2.35rem)] leading-[1.02]">PLACEHOLDER Data &amp; Analytics</h1>
+      <p class="mt-2 max-w-[50rem] text-[0.94rem] text-slate-200">
         PLACEHOLDER for trader dashboards, market monitoring, historical snapshots, and execution tooling.
       </p>
     </div>
 
-    <div class="hero-grid">
-      <div class="stats-column">
-        @for (stat of heroStats; track stat.label) {
-          <article class="stat-card">
-            <div class="stat-icon" [class]="stat.accent"></div>
-            <p>{{ stat.label }}</p>
-            <strong>{{ stat.value }}</strong>
+    <div class="mt-4 grid w-full grid-cols-[0.8fr_1.1fr_1.1fr] items-stretch gap-2 sm:gap-3">
+
+      <div class="grid gap-3">
+        @for (stat of heroStats(); track stat.label) {
+          <article class="relative overflow-hidden rounded-3xl bg-white/95 px-3 py-3 text-slate-950">
+            <div class="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-sky-100/90"></div>
+            <p class="relative z-10 m-0 text-[0.72rem] font-semibold text-slate-600">{{ stat.label }}</p>
+            <strong class="relative z-10 mt-2 block text-[clamp(1.15rem,1.6vw,1.65rem)] leading-none">
+              {{ stat.value }}
+            </strong>
           </article>
         }
       </div>
 
-      <article class="activity-panel">
-        <div class="panel-header">
-          <h2>Market Activity</h2>
-          <div class="panel-tabs">
-            <span class="tab active">Recently Started</span>
-            <span class="tab">Ending Soon</span>
+      <article class="flex min-h-[15.5rem] flex-col overflow-hidden rounded-3xl bg-white/97 text-slate-950">
+        <div class="flex-none border-b border-slate-200 px-3 py-2.5">
+          <h2 class="mb-1 text-[0.95rem] font-semibold whitespace-nowrap">Market Activity</h2>
+          <div class="flex gap-1">
+            <span class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-2 py-1 text-[0.62rem] font-bold text-white whitespace-nowrap">
+              Recently Started
+            </span>
+            <span class="inline-flex items-center justify-center rounded-full px-2 py-1 text-[0.62rem] font-bold text-slate-600 whitespace-nowrap">
+              Ending Soon
+            </span>
           </div>
         </div>
 
-        <div class="chip-row">
-          <span class="chip chip-active">All</span>
-          <span class="chip">Politics</span>
-          <span class="chip">Crypto</span>
-          <span class="chip">Sports</span>
+        <div class="flex flex-none gap-1 px-3 py-2">
+          <span class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-2 py-1 text-[0.62rem] font-bold text-white whitespace-nowrap">
+            All
+          </span>
+          <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[0.62rem] font-bold text-slate-700 whitespace-nowrap">
+            Politics
+          </span>
+          <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[0.62rem] font-bold text-slate-700 whitespace-nowrap">
+            Crypto
+          </span>
+          <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[0.62rem] font-bold text-slate-700 whitespace-nowrap">
+            Sports
+          </span>
         </div>
 
-        <div class="activity-list">
+        <div class="grid flex-1 gap-1 overflow-auto px-3 pb-3">
           @for (item of marketActivity; track item.title + item.meta) {
-            <div class="activity-item">
+            <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
               <div>
-                <p>{{ item.title }}</p>
-                <span>{{ item.meta }}</span>
+                <p class="m-0 text-[0.72rem] leading-[1.25] font-bold">{{ item.title }}</p>
+                <span class="text-[0.65rem] text-slate-500">{{ item.meta }}</span>
               </div>
-              <strong>{{ item.value }}</strong>
+              <strong class="text-[0.72rem] font-bold">{{ item.value }}</strong>
             </div>
           }
         </div>
       </article>
 
-      <article class="activity-panel">
-        <div class="panel-header">
-          <h2>Trader Activity</h2>
-          <div class="panel-tabs">
-            <span class="tab active">Biggest Wins</span>
-            <span class="tab">Biggest Losses</span>
+      <article class="flex min-h-[15.5rem] flex-col overflow-hidden rounded-3xl bg-white/97 text-slate-950">
+        <div class="flex-none border-b border-slate-200 px-3 py-2.5">
+          <h2 class="mb-1 text-[0.95rem] font-semibold whitespace-nowrap">Trader Activity</h2>
+          <div class="flex gap-1">
+            <span class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-2 py-1 text-[0.62rem] font-bold text-white whitespace-nowrap">
+              Biggest Wins
+            </span>
+            <span class="inline-flex items-center justify-center rounded-full px-2 py-1 text-[0.62rem] font-bold text-slate-600 whitespace-nowrap">
+              Biggest Losses
+            </span>
           </div>
         </div>
 
-        <div class="chip-row">
-          <span class="chip chip-active">1D</span>
-          <span class="chip">1W</span>
-          <span class="chip">1M</span>
+        <div class="flex flex-none gap-1 px-3 py-2">
+          <span class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-2 py-1 text-[0.62rem] font-bold text-white whitespace-nowrap">
+            1D
+          </span>
+          <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[0.62rem] font-bold text-slate-700 whitespace-nowrap">
+            1W
+          </span>
+          <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-1 text-[0.62rem] font-bold text-slate-700 whitespace-nowrap">
+            1M
+          </span>
         </div>
 
-        <div class="activity-list">
+        <div class="grid flex-1 gap-1 overflow-auto px-3 pb-3">
           @for (item of traderActivity; track item.title + item.value) {
-            <div class="activity-item">
+            <div class="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
               <div>
-                <p>{{ item.title }}</p>
-                <span>{{ item.meta }}</span>
+                <p class="m-0 text-[0.72rem] leading-[1.25] font-bold">{{ item.title }}</p>
+                <span class="text-[0.65rem] text-slate-500">{{ item.meta }}</span>
               </div>
-              <strong class="positive">{{ item.value }}</strong>
+              <strong class="text-[0.72rem] font-bold text-emerald-500">{{ item.value }}</strong>
             </div>
           }
         </div>
@@ -89,28 +105,23 @@
     </div>
   </section>
 
-  <!-- <section class="brand-strip">
-    <span>Cited by: PLACEHOLDER</span>
-    <span>Powered by: PLACEHOLDER</span>
-    <span>Supported by: PLACEHOLDER</span>
-  </section> -->
-
-  <section class="market-prices-panel">
-    <div class="market-prices-header">
+  <section class="mt-4 overflow-hidden rounded-[1.2rem] bg-white/95 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+    <div class="border-b border-slate-200 px-4 py-4">
       <div>
-        <h2>Market Prices</h2>
-        <p>Live explorer results from your backend.</p>
+        <h2 class="m-0 text-xl font-bold text-slate-900">Market Prices</h2>
+        <p class="mt-1 text-sm text-slate-600">Live explorer results from your backend.</p>
       </div>
     </div>
 
-    <div class="explorer-toolbar">
-      <label class="toolbar-search">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+      <label class="flex min-w-[min(100%,21rem)] items-center gap-3 rounded-[1.1rem] border border-slate-300 bg-slate-50 px-3 py-2.5">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="h-[1.1rem] w-[1.1rem] flex-none fill-slate-400">
           <path
             d="M10.5 4a6.5 6.5 0 1 0 4.032 11.6l4.434 4.434 1.414-1.414-4.434-4.434A6.5 6.5 0 0 0 10.5 4Z"
           />
         </svg>
         <input
+          class="w-full border-none bg-transparent text-sm text-slate-900 outline-none"
           [value]="search()"
           (input)="onSearchInput($event)"
           (keyup.enter)="applyFilters()"
@@ -118,54 +129,63 @@
         />
       </label>
 
-      <div class="toolbar-filters">
-        <span class="chip chip-active">Politics</span>
-        <span class="chip">Crypto</span>
-        <span class="chip">Sports</span>
-        <button type="button" class="ghost-button" (click)="applyFilters()">Apply</button>
+      <div class="flex flex-wrap gap-2">
+        <span class="inline-flex items-center justify-center rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">Politics</span>
+        <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">Crypto</span>
+        <span class="inline-flex items-center justify-center rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">Sports</span>
+        <button type="button" class="rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white" (click)="applyFilters()">
+          Apply
+        </button>
       </div>
     </div>
 
     @if (error()) {
-      <p class="message error-message">{{ error() }}</p>
+      <p class="m-0 px-4 py-4 text-rose-800">{{ error() }}</p>
     } @else if (loading()) {
-      <p class="message">Loading events...</p>
+      <p class="m-0 px-4 py-4 text-slate-600">Loading events...</p>
     } @else if (filteredEvents().length === 0) {
-      <p class="message">No events found.</p>
+      <p class="m-0 px-4 py-4 text-slate-600">No events found.</p>
     } @else {
-      <div class="events-table">
-        <div class="events-table-header">
+      <div class="px-4 py-4">
+        <div class="grid grid-cols-[1fr_auto] gap-4 px-2 pb-2 text-[0.8rem] font-bold uppercase tracking-[0.08em] text-slate-500">
           <span>Market</span>
           <span>Markets</span>
         </div>
 
         @for (event of filteredEvents(); track trackByEventSlug($index, event)) {
-          <article class="event-card">
-            <button type="button" class="event-summary" (click)="toggleEvent(event.event_slug)">
-              <div class="event-main">
-                <span class="event-toggle">{{ isExpanded(event.event_slug) ? '−' : '+' }}</span>
-                <div>
-                  <p>{{ event.event_title }}</p>
-                  <span>
-                    {{ event.game_start_time > 0 ? (event.game_start_time * 1000 | date: 'M/d h:mm a') : 'Schedule TBD' }}
-                  </span>
+          <article class="rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              class="mb-2 flex w-full items-center justify-between gap-4 bg-sky-200 rounded-2xl px-3 py-3 text-left text-slate-950 pb-2"
+              (click)="toggleEvent(event.event_slug)"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                <span class="inline-flex h-6 w-6 flex-none items-center justify-center rounded-full bg-sky-100 text-base font-extrabold text-sky-700">
+                  {{ isExpanded(event.event_slug) ? '−' : '+' }}
+                </span>
+                <div class="min-w-0">
+                  <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold">{{ event.event_title }}</p>
                 </div>
               </div>
-              <span class="event-count">{{ event.market_count }}</span>
+              <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-50 px-2.5 py-1 text-[0.8rem] font-extrabold text-blue-700">
+                {{ event.market_count }}
+              </span>
             </button>
 
             @if (isExpanded(event.event_slug)) {
-              <div class="market-list">
+              <div class="grid gap-2 bg-[linear-gradient(180deg,rgba(239,246,255,0.78)_0%,rgba(248,250,252,0.96)_100%)] px-3 pb-3">
                 @if (isEventLoading(event.event_slug)) {
-                  <p class="message">Loading markets...</p>
+                  <p class="m-0 px-1 py-3 text-slate-600">Loading markets...</p>
                 } @else if (marketsForEvent(event.event_slug).length === 0) {
-                  <p class="message">No markets found for this event.</p>
+                  <p class="m-0 px-1 py-3 text-slate-600">No markets found for this event.</p>
                 } @else {
                   @for (market of marketsForEvent(event.event_slug); track market.market_id) {
-                    <a class="market-row" [routerLink]="['/markets', market.market_id]">
-                      <div class="market-row__content">
-                        <p>{{ market.market_question }}</p>
-                        <!-- <span>{{ market.row_count }} rows</span> -->
+                    <a
+                      class="rounded-xl border border-transparent bg-sky-100/60 px-3 py-3 text-inherit no-underline transition hover:-translate-y-px hover:border-sky-300 hover:bg-blue-100"
+                      [routerLink]="['/markets', market.market_id]"
+                    >
+                      <div class="min-w-0">
+                        <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold text-slate-950">{{ market.market_question }}</p>
                       </div>
                     </a>
                   }
