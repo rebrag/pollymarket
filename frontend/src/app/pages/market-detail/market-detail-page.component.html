@@ -167,7 +167,7 @@
     </section>
 
     <section class="grid gap-2">
-      <div class="grid gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+      <div class="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
         <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
           <span>From</span>
           <input
@@ -205,14 +205,36 @@
         </p>
       }
 
-      @if (seriesLoading) {
-        <p class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[0.72rem] text-slate-600">
-          Loading chart range...
-        </p>
-      }
+      <div class="relative min-h-[300px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
+        @if (dragSelectionVisible && dragSelectionWidthPx > 0) {
+          <div
+            class="pointer-events-none absolute rounded-md border border-sky-500/70 bg-sky-300/20"
+            [style.left.px]="dragSelectionLeftPx"
+            [style.top.px]="dragSelectionTopPx"
+            [style.width.px]="dragSelectionWidthPx"
+            [style.height.px]="dragSelectionHeightPx"
+          ></div>
+        }
 
-      <div class="min-h-[300px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
-        <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions"></canvas>
+        @if (seriesLoading) {
+          <div class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <p class="rounded-full border border-slate-200 bg-white/95 px-4 py-2 text-[0.72rem] font-medium text-slate-600 shadow-sm">
+              Loading chart range...
+            </p>
+          </div>
+        }
+
+        <canvas
+          baseChart
+          [type]="'line'"
+          [data]="chartData"
+          [options]="chartOptions"
+          class="touch-none"
+          (pointerdown)="onChartPointerDown($event)"
+          (pointermove)="onChartPointerMove($event)"
+          (pointerup)="onChartPointerUp($event)"
+          (pointercancel)="onChartPointerCancel()"
+        ></canvas>
       </div>
     </section>
   }

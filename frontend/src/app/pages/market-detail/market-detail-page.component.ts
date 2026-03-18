@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -64,6 +64,8 @@ Chart.register(hoverGuideLinePlugin);
   styleUrl: './market-detail-page.component.css',
 })
 export class MarketDetailPageComponent implements OnInit {
+  @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective<'line'>;
+
   readonly Math = Math;
   marketId = '';
   metadata: MarketMetadataDto | null = null;
@@ -79,6 +81,14 @@ export class MarketDetailPageComponent implements OnInit {
   readonly chartRangeEnd = signal('');
   timeFilterError = '';
   seriesLoading = false;
+  dragSelectionVisible = false;
+  dragSelectionLeftPx = 0;
+  dragSelectionWidthPx = 0;
+  dragSelectionTopPx = 0;
+  dragSelectionHeightPx = 0;
+
+  private dragStartPixelX = 0;
+  private dragCurrentPixelX = 0;
 
   limit = 100;
   offset = 0;
@@ -321,6 +331,86 @@ export class MarketDetailPageComponent implements OnInit {
     this.loadSeriesForCurrentRange();
   }
 
+  onChartPointerDown(event: PointerEvent): void {
+    if (this.seriesLoading || this.currentSeriesPoints.length === 0) {
+      return;
+    }
+
+    const chart = this.chartDirective?.chart;
+    const chartArea = chart?.chartArea;
+    if (!chart || !chartArea) {
+      return;
+    }
+
+    if (event.offsetX < chartArea.left || event.offsetX > chartArea.right || event.offsetY < chartArea.top || event.offsetY > chartArea.bottom) {
+      return;
+    }
+
+    const pointerTarget = event.target;
+    if (pointerTarget instanceof Element && 'setPointerCapture' in pointerTarget) {
+      pointerTarget.setPointerCapture(event.pointerId);
+    }
+
+    this.dragStartPixelX = this.clampToChartX(event.offsetX);
+    this.dragCurrentPixelX = this.dragStartPixelX;
+    this.dragSelectionTopPx = chartArea.top;
+    this.dragSelectionHeightPx = chartArea.bottom - chartArea.top;
+    this.updateDragSelectionBox();
+  }
+
+  onChartPointerMove(event: PointerEvent): void {
+    if (!this.dragSelectionVisible) {
+      return;
+    }
+
+    this.dragCurrentPixelX = this.clampToChartX(event.offsetX);
+    this.updateDragSelectionBox();
+  }
+
+  onChartPointerUp(event: PointerEvent): void {
+    if (!this.dragSelectionVisible) {
+      return;
+    }
+
+    const pointerTarget = event.target;
+    if (pointerTarget instanceof Element && 'releasePointerCapture' in pointerTarget && pointerTarget.hasPointerCapture(event.pointerId)) {
+      pointerTarget.releasePointerCapture(event.pointerId);
+    }
+
+    this.dragCurrentPixelX = this.clampToChartX(event.offsetX);
+    const selectionWidth = Math.abs(this.dragCurrentPixelX - this.dragStartPixelX);
+    if (selectionWidth < 6) {
+      this.resetDragSelection();
+      return;
+    }
+
+    const chart = this.chartDirective?.chart;
+    const xScale = chart?.scales['x'];
+    if (!chart || !xScale) {
+      this.resetDragSelection();
+      return;
+    }
+
+    const startPixel = Math.min(this.dragStartPixelX, this.dragCurrentPixelX);
+    const endPixel = Math.max(this.dragStartPixelX, this.dragCurrentPixelX);
+    const startValue = xScale.getValueForPixel(startPixel);
+    const endValue = xScale.getValueForPixel(endPixel);
+    if (startValue == null || endValue == null) {
+      this.resetDragSelection();
+      return;
+    }
+
+    const startTimestampMs = this.firstSeriesTimestampMs + startValue;
+    const endTimestampMs = this.firstSeriesTimestampMs + endValue;
+
+    this.setChartRange(startTimestampMs, endTimestampMs);
+    this.resetDragSelection();
+  }
+
+  onChartPointerCancel(): void {
+    this.resetDragSelection();
+  }
+
   private loadSeriesForCurrentRange(): void {
     const startInput = this.chartRangeStart().trim();
     const endInput = this.chartRangeEnd().trim();
@@ -344,6 +434,13 @@ export class MarketDetailPageComponent implements OnInit {
     );
   }
 
+  private setChartRange(startTimestampMs: number, endTimestampMs: number): void {
+    this.chartRangeStart.set(this.formatDateTimeLocalValue(startTimestampMs));
+    this.chartRangeEnd.set(this.formatDateTimeLocalValue(endTimestampMs));
+    this.timeFilterError = '';
+    this.loadSeries(startTimestampMs / 1000, endTimestampMs / 1000);
+  }
+
   private parseLocalDateTime(value: string): number {
     return new Date(value).getTime();
   }
@@ -365,12 +462,13 @@ export class MarketDetailPageComponent implements OnInit {
   }
 
   private defaultChartRangeStart(): string {
-    const timestampMs = (this.metadata?.game_start_time ?? 0) * 1000;
+    const timestampMs = (this.stats?.first_ts ?? 0) * 1000;
     return timestampMs > 0 ? this.formatDateTimeLocalValue(timestampMs) : '';
   }
 
   private defaultChartRangeEnd(): string {
-    return this.lastSeriesTimestampMs > 0 ? this.formatDateTimeLocalValue(this.lastSeriesTimestampMs) : '';
+    const timestampMs = (this.stats?.last_ts ?? 0) * 1000 || this.lastSeriesTimestampMs;
+    return timestampMs > 0 ? this.formatDateTimeLocalValue(timestampMs) : '';
   }
 
   private formatDateTimeLocalValue(timestampMs: number): string {
@@ -391,6 +489,31 @@ export class MarketDetailPageComponent implements OnInit {
         this.seriesLoading = false;
       },
     });
+  }
+
+  private clampToChartX(pixelX: number): number {
+    const chartArea = this.chartDirective?.chart?.chartArea;
+    if (!chartArea) {
+      return pixelX;
+    }
+
+    return Math.min(Math.max(pixelX, chartArea.left), chartArea.right);
+  }
+
+  private updateDragSelectionBox(): void {
+    this.dragSelectionVisible = true;
+    this.dragSelectionLeftPx = Math.min(this.dragStartPixelX, this.dragCurrentPixelX);
+    this.dragSelectionWidthPx = Math.abs(this.dragCurrentPixelX - this.dragStartPixelX);
+  }
+
+  private resetDragSelection(): void {
+    this.dragSelectionVisible = false;
+    this.dragSelectionLeftPx = 0;
+    this.dragSelectionWidthPx = 0;
+    this.dragSelectionTopPx = 0;
+    this.dragSelectionHeightPx = 0;
+    this.dragStartPixelX = 0;
+    this.dragCurrentPixelX = 0;
   }
 
   private renderChart(points: MarketSeriesPoint[]): void {
