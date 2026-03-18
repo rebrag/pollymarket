@@ -166,7 +166,51 @@
       </article>
     </section>
 
-    <section>
+    <section class="grid gap-2">
+      <div class="grid gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
+          <span>From</span>
+          <input
+            type="datetime-local"
+            [ngModel]="chartRangeStart()"
+            (ngModelChange)="updateChartRangeStart($event)"
+            class="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-[0.74rem] font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
+
+        <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
+          <span>To</span>
+          <input
+            type="datetime-local"
+            [ngModel]="chartRangeEnd()"
+            (ngModelChange)="updateChartRangeEnd($event)"
+            class="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-[0.74rem] font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
+
+        <div class="flex items-end">
+          <button
+            type="button"
+            class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
+            (click)="clearChartTimeFilter()"
+          >
+            Clear range
+          </button>
+        </div>
+      </div>
+
+      @if (timeFilterError) {
+        <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[0.72rem] font-medium text-amber-800">
+          {{ timeFilterError }}
+        </p>
+      }
+
+      @if (seriesLoading) {
+        <p class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[0.72rem] text-slate-600">
+          Loading chart range...
+        </p>
+      }
+
       <div class="min-h-[300px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
         <canvas baseChart [type]="'line'" [data]="chartData" [options]="chartOptions"></canvas>
       </div>

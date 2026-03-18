@@ -144,6 +144,8 @@ def get_rows(
 def get_series(
     market_id: str,
     max_points: int = Query(default=500, ge=10, le=10000),
+    start_ts: float | None = Query(default=None),
+    end_ts: float | None = Query(default=None),
     catalog: MarketCatalogService = Depends(get_catalog),
 ) -> list[MarketSeriesPoint]:
     try:
@@ -155,7 +157,20 @@ def get_series(
     bids: list[float] = [float(v) for v in table.column("best_bid").to_pylist()]
     asks: list[float] = [float(v) for v in table.column("best_ask").to_pylist()]
 
-    idx: list[int] = sample_indices(len(ts), max_points=max_points)
+    if start_ts is not None and end_ts is not None and start_ts > end_ts:
+        raise HTTPException(status_code=422, detail="start_ts must be less than or equal to end_ts")
+
+    filtered_idx: list[int] = [
+        i
+        for i, timestamp in enumerate(ts)
+        if (start_ts is None or timestamp >= start_ts) and (end_ts is None or timestamp <= end_ts)
+    ]
+
+    if not filtered_idx:
+        return []
+
+    sampled_filtered_positions: list[int] = sample_indices(len(filtered_idx), max_points=max_points)
+    idx: list[int] = [filtered_idx[position] for position in sampled_filtered_positions]
     return [
         MarketSeriesPoint(timestamp=ts[i], best_bid=bids[i], best_ask=asks[i])
         for i in idx

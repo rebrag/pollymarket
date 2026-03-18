@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest } from 'rxjs';
+import { BrnLabelDirective } from '@spartan-ng/ui-label-brain';
 import {
   Chart,
   ChartData,
@@ -58,7 +59,7 @@ Chart.register(hoverGuideLinePlugin);
 @Component({
   selector: 'app-market-detail-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, BaseChartDirective, DatePipe, RouterLink],
+  imports: [CommonModule, FormsModule, BaseChartDirective, DatePipe, RouterLink, BrnLabelDirective],
   templateUrl: './market-detail-page.component.html',
   styleUrl: './market-detail-page.component.css',
 })
@@ -73,6 +74,11 @@ export class MarketDetailPageComponent implements OnInit {
   outcome2Label = 'Outcome 2';
   currentSeriesPoints: MarketSeriesPoint[] = [];
   firstSeriesTimestampMs = 0;
+  lastSeriesTimestampMs = 0;
+  readonly chartRangeStart = signal('');
+  readonly chartRangeEnd = signal('');
+  timeFilterError = '';
+  seriesLoading = false;
 
   limit = 100;
   offset = 0;
@@ -142,6 +148,7 @@ export class MarketDetailPageComponent implements OnInit {
                 day: 'numeric',
                 hour: 'numeric',
                 minute: '2-digit',
+                second: '2-digit',
               });
             }
 
@@ -150,6 +157,7 @@ export class MarketDetailPageComponent implements OnInit {
               day: 'numeric',
               hour: 'numeric',
               minute: '2-digit',
+              second: '2-digit',
             });
           },
         },
@@ -250,7 +258,8 @@ export class MarketDetailPageComponent implements OnInit {
       next: (metadata) => {
         this.metadata = metadata;
         this.updateOutcomeLabels(metadata.outcomes);
-        this.setChartData(this.currentSeriesPoints);
+        this.syncDefaultChartRangeInputs();
+        this.renderChart(this.currentSeriesPoints);
         this.loadRelatedMarkets(metadata.event_slug);
       },
       error: (err) => {
@@ -267,12 +276,7 @@ export class MarketDetailPageComponent implements OnInit {
       },
     });
 
-    this.api.getSeries(this.marketId, 400).subscribe({
-      next: (series) => this.setChartData(series),
-      error: (err) => {
-        this.error = `Series error: ${err?.message ?? 'unknown error'}`;
-      },
-    });
+    this.loadSeries();
 
     this.api.getRows(this.marketId, this.limit, this.offset).subscribe({
       next: (response: PaginatedResponse<MarketRow>) => {
@@ -300,7 +304,96 @@ export class MarketDetailPageComponent implements OnInit {
     });
   }
 
+  updateChartRangeStart(value: string): void {
+    this.chartRangeStart.set(value);
+    this.loadSeriesForCurrentRange();
+  }
+
+  updateChartRangeEnd(value: string): void {
+    this.chartRangeEnd.set(value);
+    this.loadSeriesForCurrentRange();
+  }
+
+  clearChartTimeFilter(): void {
+    this.chartRangeStart.set(this.defaultChartRangeStart());
+    this.chartRangeEnd.set(this.defaultChartRangeEnd());
+    this.timeFilterError = '';
+    this.loadSeriesForCurrentRange();
+  }
+
+  private loadSeriesForCurrentRange(): void {
+    const startInput = this.chartRangeStart().trim();
+    const endInput = this.chartRangeEnd().trim();
+    const startMs = startInput ? this.parseLocalDateTime(startInput) : Number.NEGATIVE_INFINITY;
+    const endMs = endInput ? this.parseLocalDateTime(endInput) : Number.POSITIVE_INFINITY;
+
+    if ((startInput && Number.isNaN(startMs)) || (endInput && Number.isNaN(endMs))) {
+      this.timeFilterError = 'Enter valid local start and end times.';
+      return;
+    }
+
+    if (startMs > endMs) {
+      this.timeFilterError = 'Start time must be before end time.';
+      return;
+    }
+
+    this.timeFilterError = '';
+    this.loadSeries(
+      Number.isFinite(startMs) ? startMs / 1000 : undefined,
+      Number.isFinite(endMs) ? endMs / 1000 : undefined,
+    );
+  }
+
+  private parseLocalDateTime(value: string): number {
+    return new Date(value).getTime();
+  }
+
   private setChartData(points: MarketSeriesPoint[]): void {
+    this.lastSeriesTimestampMs = (points.at(-1)?.timestamp ?? 0) * 1000;
+    this.syncDefaultChartRangeInputs();
+    this.renderChart(points);
+  }
+
+  private syncDefaultChartRangeInputs(): void {
+    if (!this.chartRangeStart()) {
+      this.chartRangeStart.set(this.defaultChartRangeStart());
+    }
+
+    if (!this.chartRangeEnd()) {
+      this.chartRangeEnd.set(this.defaultChartRangeEnd());
+    }
+  }
+
+  private defaultChartRangeStart(): string {
+    const timestampMs = (this.metadata?.game_start_time ?? 0) * 1000;
+    return timestampMs > 0 ? this.formatDateTimeLocalValue(timestampMs) : '';
+  }
+
+  private defaultChartRangeEnd(): string {
+    return this.lastSeriesTimestampMs > 0 ? this.formatDateTimeLocalValue(this.lastSeriesTimestampMs) : '';
+  }
+
+  private formatDateTimeLocalValue(timestampMs: number): string {
+    const date = new Date(timestampMs);
+    const timezoneOffsetMs = date.getTimezoneOffset() * 60000;
+    return new Date(timestampMs - timezoneOffsetMs).toISOString().slice(0, 16);
+  }
+
+  private loadSeries(startTs?: number, endTs?: number): void {
+    this.seriesLoading = true;
+    this.api.getSeries(this.marketId, 400, startTs, endTs).subscribe({
+      next: (series) => {
+        this.setChartData(series);
+        this.seriesLoading = false;
+      },
+      error: (err) => {
+        this.error = `Series error: ${err?.message ?? 'unknown error'}`;
+        this.seriesLoading = false;
+      },
+    });
+  }
+
+  private renderChart(points: MarketSeriesPoint[]): void {
     this.currentSeriesPoints = points;
     const firstTimestamp = points[0]?.timestamp ?? 0;
     this.firstSeriesTimestampMs = firstTimestamp * 1000;

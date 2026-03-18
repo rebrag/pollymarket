@@ -73,7 +73,22 @@ def test_api_endpoints_local(monkeypatch) -> None:
 
     stats = client.get(f"/api/v1/markets/{market_id}/stats")
     assert stats.status_code == 200
-    assert stats.json()["row_count"] >= 0
+    stats_payload = stats.json()
+
+    ranged_series = client.get(
+        f"/api/v1/markets/{market_id}/series",
+        params={
+            "max_points": 25,
+            "start_ts": stats_payload["first_ts"],
+            "end_ts": stats_payload["last_ts"],
+        },
+    )
+    assert ranged_series.status_code == 200
+    ranged_payload = ranged_series.json()
+    assert len(ranged_payload) <= 25
+    assert all(stats_payload["first_ts"] <= item["timestamp"] <= stats_payload["last_ts"] for item in ranged_payload)
+
+    assert stats_payload["row_count"] >= 0
 
 
 def test_missing_market_returns_404(monkeypatch) -> None:

@@ -43,8 +43,14 @@ export class MarketApiService {
     return this.http.get<PaginatedResponse<MarketRow>>(`${this.base}/api/v1/markets/${marketId}/rows`, { params });
   }
 
-  getSeries(marketId: string, maxPoints: number): Observable<MarketSeriesPoint[]> {
-    const params = new HttpParams().set('max_points', maxPoints);
+  getSeries(marketId: string, maxPoints: number, startTs?: number, endTs?: number): Observable<MarketSeriesPoint[]> {
+    let params = new HttpParams().set('max_points', maxPoints);
+    if (startTs != null) {
+      params = params.set('start_ts', startTs);
+    }
+    if (endTs != null) {
+      params = params.set('end_ts', endTs);
+    }
     return this.http.get<MarketSeriesPoint[]>(`${this.base}/api/v1/markets/${marketId}/series`, { params });
   }
 

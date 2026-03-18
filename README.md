@@ -59,7 +59,7 @@ Optional variables:
 - `GET /api/v1/markets?event_slug=&q=&limit=&offset=`
 - `GET /api/v1/markets/{market_id}/metadata`
 - `GET /api/v1/markets/{market_id}/rows?limit=&offset=`
-- `GET /api/v1/markets/{market_id}/series?max_points=`
+- `GET /api/v1/markets/{market_id}/series?max_points=&start_ts=&end_ts=`
 - `GET /api/v1/markets/{market_id}/stats`
 
 ## Tests
