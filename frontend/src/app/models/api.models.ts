@@ -13,6 +13,8 @@ export interface MarketSummary {
   event_title: string;
   market_question: string;
   row_count: number;
+  volume: number;
+  image_url: string;
 }
 
 export interface MarketMetadataDto {

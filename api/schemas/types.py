@@ -23,6 +23,8 @@ class MarketSummary(BaseModel):
     event_title: str
     market_question: str
     row_count: int
+    volume: float = 0.0
+    image_url: str = ""
 
 
 class MarketMetadataDto(BaseModel):

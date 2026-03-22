@@ -181,11 +181,33 @@
                 } @else {
                   @for (market of marketsForEvent(event.event_slug); track market.market_id) {
                     <a
-                      class="rounded-xl border border-transparent bg-sky-100/60 px-3 py-3 text-inherit no-underline transition hover:-translate-y-px hover:border-sky-300 hover:bg-blue-100"
+                      class="flex items-center justify-between gap-3 rounded-xl border border-transparent bg-sky-100/60 px-3 py-3 text-inherit no-underline transition hover:-translate-y-px hover:border-sky-300 hover:bg-blue-100"
                       [routerLink]="['/markets', market.market_id]"
                     >
-                      <div class="min-w-0">
-                        <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold text-slate-950">{{ market.market_question }}</p>
+                      <div class="flex min-w-0 items-center gap-3">
+                        @if (market.image_url) {
+                          <img
+                            [src]="market.image_url"
+                            alt="Market thumbnail"
+                            class="h-10 w-10 shrink-0 rounded-lg border border-sky-200/70 bg-white object-cover shadow-sm"
+                          />
+                        }
+
+                        <div class="min-w-0">
+                          <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold text-slate-950">{{ market.market_question }}</p>
+                        </div>
+                      </div>
+
+                      <div class="flex shrink-0 items-center gap-2 text-right">
+                        @if (market.volume > 0) {
+                          <span class="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-700">
+                            {{ formatVolume(market.volume) }}
+                          </span>
+                        }
+
+                        <span class="inline-flex min-w-10 items-center justify-center rounded-full bg-blue-50 px-2.5 py-1 text-[0.75rem] font-extrabold text-blue-700">
+                          {{ market.row_count }}
+                        </span>
                       </div>
                     </a>
                   }

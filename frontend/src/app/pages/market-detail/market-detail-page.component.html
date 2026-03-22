@@ -8,38 +8,36 @@
       <span>Back to explorer</span>
     </a>
 
-    <div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-      <div class="min-w-0">
-        <p class="text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-sky-700">Market Detail</p>
-        <div class="mt-0.5 overflow-hidden whitespace-nowrap" [attr.title]="metadata?.market_question ?? 'Loading market...'">
-          <h1
-            class="inline-block min-w-full whitespace-nowrap text-base font-bold tracking-tight text-slate-950 sm:text-lg"
-            [class.market-title-marquee]="shouldAnimateTitle(metadata?.market_question ?? '')"
-          >
-            {{ metadata?.market_question ?? 'Loading market...' }}
-          </h1>
-        </div>
-        @if (metadata) {
-          <p class="mt-1 max-w-3xl text-xs text-slate-600 sm:text-[0.82rem]">
-            {{ metadata.event_title }}
-          </p>
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      
+      <div class="flex items-center gap-3.5">
+        @if (metadata?.image_url) {
+          <img 
+            [src]="metadata!.image_url" 
+            alt="Market thumbnail" 
+            class="h-12 w-12 shrink-0 rounded-lg border border-slate-200/60 bg-slate-50 object-cover shadow-sm sm:h-14 sm:w-14"
+          />
         }
+
+        <div class="min-w-0">
+          <p class="text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-sky-700">Market Detail</p>
+          <div class="mt-0.5 overflow-hidden whitespace-nowrap" [attr.title]="metadata?.market_question ?? 'Loading market...'">
+            <h1
+              class="inline-block min-w-full whitespace-nowrap text-base font-bold tracking-tight text-slate-950 sm:text-lg"
+              [class.market-title-marquee]="shouldAnimateTitle(metadata?.market_question ?? '')"
+            >
+              {{ metadata?.market_question ?? 'Loading market...' }}
+            </h1>
+          </div>
+          @if (metadata) {
+            <p class="mt-1 max-w-3xl text-xs text-slate-600 sm:text-[0.82rem]">
+              {{ metadata.event_title }}
+            </p>
+          }
+        </div>
       </div>
 
-      <!-- @if (metadata) {
-        <div class="flex flex-wrap gap-1.5 lg:max-w-xs lg:justify-end">
-          <span class="inline-flex items-center rounded-full bg-slate-900 px-2.5 py-0.5 text-[0.65rem] font-semibold text-white">
-            {{ metadata.is_neg_risk ? 'Negative Risk' : 'Standard Risk' }}
-          </span>
-          <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
-            Tick {{ metadata.min_tick_size }}
-          </span>
-          <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[0.65rem] font-semibold text-amber-700">
-            Min {{ metadata.min_order_size }}
-          </span>
-        </div>
-      } -->
-    </div>
+      </div>
   </div>
 
   @if (error) {

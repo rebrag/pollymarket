@@ -127,6 +127,8 @@ class MarketCatalogService:
             event_title=item.metadata.event_title,
             market_question=item.metadata.market_question,
             row_count=item.row_count,
+            volume=item.metadata.volume,
+            image_url=item.metadata.image_url,
         )
 
     def list_events(self) -> list[EventSummary]:

@@ -28,6 +28,11 @@ export class ExplorerPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly numberFormatter = new Intl.NumberFormat('en-US');
+  private readonly currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
 
   readonly marketActivity: readonly ActivityItem[] = [
     { title: 'PLACEHOLDER', meta: '25m ago', value: '$0' },
@@ -135,6 +140,10 @@ export class ExplorerPageComponent implements OnInit {
 
   isEventLoading(eventSlug: string): boolean {
     return this.loadingEventSlugs().has(eventSlug);
+  }
+
+  formatVolume(volume: number): string {
+    return this.currencyFormatter.format(volume);
   }
 
   toggleEvent(eventSlug: string): void {
