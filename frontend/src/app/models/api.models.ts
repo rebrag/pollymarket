@@ -25,6 +25,13 @@ export interface MarketMetadataDto {
   min_order_size: number;
   is_neg_risk: boolean;
   game_start_time: number;
+  // Make sure these are added and the file is SAVED:
+  volume: number;
+  volume_24hr: number;
+  liquidity: number;
+  image_url: string;
+  resolution_source: string;
+  end_date: string;
 }
 
 export interface MarketRow {

@@ -30,10 +30,16 @@ class MarketCatalogService:
             event_title=meta.get("event_title", ""),
             market_question=meta.get("market_question", ""),
             outcomes=meta.get("outcomes", "[]"),
-            min_tick_size=float(meta.get("min_tick_size", "0") or 0),
+            min_tick_size=float(meta.get("min_tick_size", "0") or 0.0),
             min_order_size=int(float(meta.get("min_order_size", "0") or 0)),
             is_neg_risk=str(meta.get("is_neg_risk", "False")).lower() == "true",
-            game_start_time=float(meta.get("game_start_time", "0") or 0),
+            game_start_time=float(meta.get("game_start_time", "0") or 0.0),
+            volume=float(meta.get("volume", "0") or 0.0),
+            volume_24hr=float(meta.get("volume_24hr", "0") or 0.0),
+            liquidity=float(meta.get("liquidity", "0") or 0.0),
+            image_url=meta.get("image_url", ""),
+            resolution_source=meta.get("resolution_source", ""),
+            end_date=meta.get("end_date", ""),
         )
 
     def _apply_metadata_fallback(self, metadata: MarketMetadataDto, obj: ParquetObject) -> MarketMetadataDto:

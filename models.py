@@ -183,30 +183,24 @@ class Orderbook(TypedDict):
     event_slug: str
     event_title: str
     market_question: str
-    outcomes: str #"outcomes": market['outcomes'], ---THIS WILL CONTAIN STRING WITH BOTH OUTCOMES
+    outcomes: str
     min_tick_size: float
     min_order_size: int
     is_neg_risk: bool
-    bids: dict[str, float]  # Optimized dict[Price: str, Size: float]
+    bids: dict[str, float]
     asks: dict[str, float]
     lastTradePrice: float
     midpoint: float
     spread: float
     is_active: bool
     last_update: datetime
-
-    # "asset_id": asset_id,
-    # "event_slug": event['slug'],
-    # "event_title": event['title'],
-    # "market_question": market['question'],
-    # "min_tick_size": float(market['orderPriceMinTickSize']),
-    # "min_order_size": int(market['orderMinSize']),
-    # "is_neg_risk": bool(market['negRisk']),
-    # "bids": {},
-    # "asks": {},
-    # "lastTradePrice": market['lastTradePrice'],
-    # "spread": float(market['spread']),
-    # "is_active": bool(market['active']),
+    game_start_time: float
+    volume: float
+    volume_24hr: float
+    liquidity: float
+    image_url: str
+    resolution_source: str
+    end_date: str
 
 class TickSizeChangeEvent(TypedDict):
     market: str #"market": "0x319911213cb7a5dcf0e2c5e333c29f4e8b2847d981c4c6ad6c556721754cc73b",

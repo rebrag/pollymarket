@@ -26,6 +26,12 @@ class MarketMetadata:
     min_order_size: int
     is_neg_risk: bool
     game_start_time: float
+    volume: float
+    volume_24hr: float
+    liquidity: float
+    image_url: str
+    resolution_source: str
+    end_date: str
 
 
 class HistoryLogger:
@@ -138,6 +144,12 @@ class HistoryLogger:
             b"min_order_size": str(metadata.min_order_size).encode("utf-8"),
             b"is_neg_risk": str(metadata.is_neg_risk).encode("utf-8"),
             b"game_start_time": str(metadata.game_start_time).encode("utf-8"),
+            b"volume": str(metadata.volume).encode("utf-8"),
+            b"volume_24hr": str(metadata.volume_24hr).encode("utf-8"),
+            b"liquidity": str(metadata.liquidity).encode("utf-8"),
+            b"image_url": metadata.image_url.encode("utf-8"),
+            b"resolution_source": metadata.resolution_source.encode("utf-8"),
+            b"end_date": metadata.end_date.encode("utf-8"),
         }
 
     @staticmethod

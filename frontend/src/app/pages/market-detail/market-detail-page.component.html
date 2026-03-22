@@ -75,19 +75,30 @@
           </button>
         </div>
 
-        <dl class="mt-2.5 grid gap-1.5">
-          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
-            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Event</dt>
-            <dd class="mt-0.5 line-clamp-2 text-[0.72rem] font-medium text-slate-900">{{ metadata.event_title }}</dd>
-          </div>
-          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
-            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Start</dt>
-            <dd class="mt-0.5 text-[0.72rem] font-medium text-slate-900">{{ metadata.game_start_time * 1000 | date: 'MMM d, y, h:mm a' }}</dd>
-          </div>
-          <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
-            <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Outcomes</dt>
-            <dd class="mt-0.5 line-clamp-2 text-[0.72rem] font-medium text-slate-900">{{ metadata.outcomes }}</dd>
-          </div>
+        <dl class="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+          @for (item of metadata | keyvalue; track item.key) {
+            @if (!excludedMetadataKeys.includes(item.key)) {
+              <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
+                <dt class="text-[0.56rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  {{ formatMetadataKey(item.key) }}
+                </dt>
+                
+                <dd class="mt-0.5 text-[0.72rem] font-medium text-slate-900">
+                  @if (item.key === 'game_start_time') {
+                    {{ getTimestampMs(item.value) | date: 'MMM d, y, h:mm a' }}
+                  } @else if (item.key === 'resolution_source') {
+                    <a [href]="item.value" target="_blank" rel="noopener noreferrer" class="truncate text-sky-600 hover:underline">
+                      View Source ↗
+                    </a>
+                  } @else if ($any(item.key).includes('volume') || $any(item.key) === 'liquidity') {
+                    {{ $any(item.value) | currency:'USD':'symbol':'1.0-0' }}
+                  } @else {
+                    <span class="line-clamp-2">{{ item.value }}</span>
+                  }
+                </dd>
+              </div>
+            }
+          }
         </dl>
 
         

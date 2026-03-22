@@ -75,19 +75,25 @@ def parse_asset_id(market: Market) -> str:
 def create_orderbook_skeleton(event: Event, market: Market, asset_id: str) -> Orderbook:
     return {
         "asset_id": asset_id,
-        "event_slug": event["slug"],
-        "event_title": event["title"],
-        "market_question": market["question"],
-        "outcomes": market["outcomes"],
-        "min_tick_size": float(market["orderPriceMinTickSize"]),
-        "min_order_size": int(market["orderMinSize"]),
-        "is_neg_risk": bool(market["negRisk"]),
-        "lastTradePrice": market["lastTradePrice"],
-        "spread": float(market["spread"]),
-        "is_active": bool(market["active"]),
-        "game_start_time": convert_polymarket_gamestarttime(market["gameStartTime"]),
+        "event_slug": event.get("slug", ""),
+        "event_title": event.get("title", ""),
+        "market_question": market.get("question", ""),
+        "outcomes": market.get("outcomes", "[]"),
+        "min_tick_size": float(market.get("orderPriceMinTickSize", 0.001)),
+        "min_order_size": int(market.get("orderMinSize", 5)),
+        "is_neg_risk": bool(market.get("negRisk", False)),
+        "lastTradePrice": float(market.get("lastTradePrice", 0.0)),
+        "spread": float(market.get("spread", 0.0)),
+        "is_active": bool(market.get("active", False)),
+        "game_start_time": convert_polymarket_gamestarttime(market.get("gameStartTime", "")),
         "bids": {},
         "asks": {},
+        "volume": float(market.get("volume", 0.0)),
+        "volume_24hr": float(market.get("volume24hr", 0.0)),
+        "liquidity": float(market.get("liquidity", 0.0)),
+        "image_url": market.get("image", ""),
+        "resolution_source": market.get("resolutionSource", ""),
+        "end_date": market.get("endDate", "")
     }
 
 def create_orderbooks(events: list[Event]) -> dict[str, Orderbook]:
@@ -101,14 +107,20 @@ def create_orderbooks(events: list[Event]) -> dict[str, Orderbook]:
 def market_metadata_from_book(book: Orderbook) -> MarketMetadata:
     return MarketMetadata(
         asset_id=str(book.get("asset_id", "")),
-        event_slug=str(book.get("event_slug", "unknown_event")),
-        event_title=str(book.get("event_title", "unknown_title")),
-        market_question=str(book.get("market_question", "unknown_question")),
+        event_slug=str(book.get("event_slug", "")),
+        event_title=str(book.get("event_title", "")),
+        market_question=str(book.get("market_question", "")),
         outcomes=str(book.get("outcomes", "[]")),
         min_tick_size=float(book.get("min_tick_size", 0.01)),
         min_order_size=int(book.get("min_order_size", 5)),
         is_neg_risk=bool(book.get("is_neg_risk", False)),
-        game_start_time=float(book.get("game_start_time", 1000.0)),
+        game_start_time=float(book.get("game_start_time", 0.0)),
+        volume=float(book.get("volume", 0.0)),
+        volume_24hr=float(book.get("volume_24hr", 0.0)),
+        liquidity=float(book.get("liquidity", 0.0)),
+        image_url=str(book.get("image_url", "")),
+        resolution_source=str(book.get("resolution_source", "")),
+        end_date=str(book.get("end_date", ""))
     )
 
 def ensure_logger_registered(asset_id: str) -> None:

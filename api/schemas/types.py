@@ -26,15 +26,21 @@ class MarketSummary(BaseModel):
 
 
 class MarketMetadataDto(BaseModel):
-    asset_id: str = ""
-    event_slug: str = ""
-    event_title: str = ""
-    market_question: str = ""
-    outcomes: str = "[]"
-    min_tick_size: float = 0.0
-    min_order_size: int = 0
-    is_neg_risk: bool = False
-    game_start_time: float = 0.0
+    asset_id: str
+    event_slug: str
+    event_title: str
+    market_question: str
+    outcomes: str
+    min_tick_size: float
+    min_order_size: int
+    is_neg_risk: bool
+    game_start_time: float
+    volume: float = 0.0
+    volume_24hr: float = 0.0
+    liquidity: float = 0.0
+    image_url: str = ""
+    resolution_source: str = ""
+    end_date: str = ""
 
 
 class MarketRow(BaseModel):

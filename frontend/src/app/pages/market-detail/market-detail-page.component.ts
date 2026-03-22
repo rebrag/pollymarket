@@ -639,4 +639,22 @@ export class MarketDetailPageComponent implements OnInit {
       queryParamsHandling: 'merge',
     });
   }
+
+  readonly excludedMetadataKeys: string[] = [
+    'asset_id',
+    'event_slug',
+    'event_title',
+    'market_question',
+    'image_url' 
+  ];
+
+  formatMetadataKey(key: string): string {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+  }
+
+  getTimestampMs(value: unknown): number {
+    return Number(value) * 1000;
+  }
+
+  
 }
