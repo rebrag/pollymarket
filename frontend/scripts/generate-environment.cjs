@@ -52,17 +52,17 @@ for (const envPath of envCandidates) {
 
 const mergedEnv = { ...fileEnv, ...process.env };
 
-const defaultAngularOffline = !toBool(mergedEnv.CI, false);
-const angularOffline = toBool(mergedEnv.ANGULAR_OFFLINE, defaultAngularOffline);
+const defaultUseLocalFastApi = !toBool(mergedEnv.CI, false);
+const useLocalFastApi = toBool(mergedEnv.USE_LOCAL_FASTAPI, defaultUseLocalFastApi);
 const localApiBaseUrl = stripTrailingSlash((mergedEnv.ANGULAR_LOCAL_API_BASE_URL || '').trim());
 const onlineApiBaseUrl = stripTrailingSlash(
   (mergedEnv.ANGULAR_ONLINE_API_BASE_URL || 'https://krwvpdmpgw.us-east-1.awsapprunner.com').trim()
 );
-const apiBaseUrl = angularOffline ? localApiBaseUrl : onlineApiBaseUrl;
+const apiBaseUrl = useLocalFastApi ? localApiBaseUrl : onlineApiBaseUrl;
 
 const environmentFile = `export const environment = {
   production: false,
-  angularOffline: ${angularOffline},
+  useLocalFastApi: ${useLocalFastApi},
   localApiBaseUrl: '${localApiBaseUrl}',
   onlineApiBaseUrl: '${onlineApiBaseUrl}',
   apiBaseUrl: '${apiBaseUrl}',
@@ -73,5 +73,5 @@ const outputPath = path.join(frontendRoot, 'src', 'environments', 'environment.t
 fs.writeFileSync(outputPath, environmentFile, 'utf8');
 
 console.log(
-  `[env] Generated environment.ts with ANGULAR_OFFLINE=${angularOffline} apiBaseUrl='${apiBaseUrl || '(proxy)'}'`
+  `[env] Generated environment.ts with USE_LOCAL_FASTAPI=${useLocalFastApi} apiBaseUrl='${apiBaseUrl || '(proxy)'}'`
 );

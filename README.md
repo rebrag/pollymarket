@@ -41,11 +41,11 @@ Angular dev server runs on `http://localhost:4200` and proxies `/api/*` to `http
 
 ### Frontend API source toggle
 
-The frontend reads `ANGULAR_OFFLINE` from `.env` (repo root or `frontend/.env`) before `npm start` / `npm build`.
+The frontend reads `USE_LOCAL_FASTAPI` from `.env` (repo root or `frontend/.env`) before `npm start` / `npm build`.
 
-- `ANGULAR_OFFLINE=true` -> use local API (default `apiBaseUrl=''`, through Angular proxy)
-- `ANGULAR_OFFLINE=false` -> use hosted API (`ANGULAR_ONLINE_API_BASE_URL`)
-- If `ANGULAR_OFFLINE` is not set, local runs default to proxy mode and CI builds default to hosted API mode.
+- `USE_LOCAL_FASTAPI=true` -> use local API (default `apiBaseUrl=''`, through Angular proxy)
+- `USE_LOCAL_FASTAPI=false` -> use hosted API (`ANGULAR_ONLINE_API_BASE_URL`)
+- If `USE_LOCAL_FASTAPI` is not set, local runs default to proxy mode and CI builds default to hosted API mode.
 
 Optional variables:
 

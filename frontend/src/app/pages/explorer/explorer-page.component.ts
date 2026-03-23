@@ -63,7 +63,13 @@ export class ExplorerPageComponent implements OnInit {
       value: this.numberFormatter.format(this.events().length),
       accent: 'from-sky-500/30 to-cyan-400/10',
     },
-    { label: 'PLACEHOLDER', value: '210,860', accent: 'from-emerald-500/30 to-teal-400/10' },
+    {
+      label: 'Markets Recorded',
+      value: this.numberFormatter.format(
+        this.events().reduce((total, event) => total + event.market_count, 0),
+      ),
+      accent: 'from-emerald-500/30 to-teal-400/10',
+    },
     { label: 'PLACEHOLDER', value: '139,894,409', accent: 'from-orange-500/30 to-amber-400/10' },
   ]);
 
@@ -97,7 +103,8 @@ export class ExplorerPageComponent implements OnInit {
       .filter((event) => {
         return event.event_title.toLowerCase().includes(q) || event.event_slug.toLowerCase().includes(q);
       })
-      .sort(compareByGameStart);
+      .sort(compareByGameStart)
+      .reverse();
   });
 
   ngOnInit(): void {
@@ -195,6 +202,13 @@ export class ExplorerPageComponent implements OnInit {
           this.fetchEventMarketsPage(eventSlug, nextOffset, nextAcc);
           return;
         }
+
+        nextAcc.sort((a, b) => {
+          if (b.volume !== a.volume) {
+            return b.volume - a.volume;
+          }
+          return b.row_count - a.row_count;
+        });
 
         this.marketsByEvent.update((markets): Record<string, MarketSummary[]> => ({
           ...markets,

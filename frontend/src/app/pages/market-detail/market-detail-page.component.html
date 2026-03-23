@@ -73,7 +73,7 @@
           </button>
         </div>
 
-        <dl class="mt-2.5 grid gap-1.5 sm:grid-cols-2">
+        <dl class="mt-2.5 grid grid-cols-2 gap-1.5">
           @for (item of metadata | keyvalue; track item.key) {
             @if (!excludedMetadataKeys.includes(item.key)) {
               <div class="rounded-lg bg-slate-50 px-2.5 py-1.5">
@@ -142,21 +142,32 @@
           </p>
         } @else if (relatedMarkets.length > 0) {
           <div class="mt-2.5 flex flex-col gap-2">
-            <label class="text-[0.68rem] font-semibold text-slate-700">
-              <span class="mb-1 block">Other markets</span>
-              <select
-                [(ngModel)]="selectedRelatedMarketId"
-                class="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-[0.72rem] text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-2 focus:ring-sky-100"
-              >
+            <div>
+              <span class="mb-1 block text-[0.68rem] font-semibold text-slate-700">Other markets</span>
+              <div class="max-h-64 overflow-y-auto rounded-lg border border-slate-300 bg-slate-50 p-1">
                 @for (market of relatedMarkets; track market.market_id) {
-                  <option [value]="market.market_id">
-                    {{ market.market_question }} 
-                  </option>
-                } 
-              </select>
-            </label>
-
-            <!-- ({{ market.row_count }} rows) -->
+                  <button
+                    type="button"
+                    class="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-2 text-left transition"
+                    [class.bg-white]="selectedRelatedMarketId === market.market_id"
+                    [class.text-slate-950]="selectedRelatedMarketId === market.market_id"
+                    [class.shadow-sm]="selectedRelatedMarketId === market.market_id"
+                    [class.ring-1]="selectedRelatedMarketId === market.market_id"
+                    [class.ring-sky-200]="selectedRelatedMarketId === market.market_id"
+                    [class.text-slate-700]="selectedRelatedMarketId !== market.market_id"
+                    [class.hover:bg-white/80]="selectedRelatedMarketId !== market.market_id"
+                    (click)="selectRelatedMarket(market.market_id)"
+                  >
+                    <span class="min-w-0 text-[0.72rem] font-medium">
+                      <span class="block truncate">{{ market.market_question }}</span>
+                    </span>
+                    <span class="shrink-0 text-[0.68rem] font-semibold text-slate-500">
+                      {{ formatVolume(market.volume) }}
+                    </span>
+                  </button>
+                }
+              </div>
+            </div>
 
             <button
               type="button"
@@ -214,7 +225,7 @@
         </p>
       }
 
-      <div class="relative min-h-[300px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
+      <div class="relative min-h-[400px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
         @if (dragSelectionVisible && dragSelectionWidthPx > 0) {
           <div
             class="pointer-events-none absolute rounded-md border border-sky-500/70 bg-sky-300/20"

@@ -65,6 +65,11 @@ Chart.register(hoverGuideLinePlugin);
 })
 export class MarketDetailPageComponent implements OnInit {
   @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective<'line'>;
+  private readonly volumeFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
 
   readonly Math = Math;
   marketId = '';
@@ -112,6 +117,7 @@ export class MarketDetailPageComponent implements OnInit {
 
   chartOptions: ChartOptions<'line'> = {
     responsive: true,
+    maintainAspectRatio: false,
     animation: false,
     scales: {
       x: {
@@ -312,6 +318,14 @@ export class MarketDetailPageComponent implements OnInit {
         offset: 0,
       },
     });
+  }
+
+  selectRelatedMarket(marketId: string): void {
+    this.selectedRelatedMarketId = marketId;
+  }
+
+  formatVolume(volume: number): string {
+    return this.volumeFormatter.format(volume);
   }
 
   updateChartRangeStart(value: string): void {
@@ -614,7 +628,12 @@ export class MarketDetailPageComponent implements OnInit {
           return;
         }
 
-        this.relatedMarkets = nextAcc.sort((a, b) => b.row_count - a.row_count);
+        this.relatedMarkets = nextAcc.sort((a, b) => {
+          if (b.volume !== a.volume) {
+            return b.volume - a.volume;
+          }
+          return b.row_count - a.row_count;
+        });
         if (this.relatedMarkets.some((m) => m.market_id === this.marketId)) {
           this.selectedRelatedMarketId = this.marketId;
         } else {
