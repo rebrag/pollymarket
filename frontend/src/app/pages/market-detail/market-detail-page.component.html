@@ -187,7 +187,7 @@
     </section>
 
     <section class="grid gap-2">
-      <div class="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+      <div class="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]">
         <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
           <span>From</span>
           <input
@@ -208,14 +208,39 @@
           />
         </label>
 
+        <div class="grid gap-1">
+          <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
+            <span>Min trade size</span>
+            <input
+              type="number"
+              min="0"
+              step="0.001"
+              [ngModel]="minTradeSizeInput()"
+              (ngModelChange)="updateMinTradeSizeInput($event)"
+              (keydown.enter)="applyMinTradeSize()"
+              class="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-[0.74rem] font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+            />
+          </label>
+          <p class="text-[0.65rem] font-medium text-slate-500">Press Enter or Apply.</p>
+        </div>
+
         <div class="flex items-end">
-          <button
-            type="button"
-            class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
-            (click)="clearChartTimeFilter()"
-          >
-            Clear range
-          </button>
+          <div class="flex w-full gap-2 sm:w-auto">
+            <button
+              type="button"
+              class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
+              (click)="applyMinTradeSize()"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
+              (click)="clearChartTimeFilter()"
+            >
+              Clear range
+            </button>
+          </div>
         </div>
       </div>
 
@@ -224,6 +249,27 @@
           {{ timeFilterError }}
         </p>
       }
+
+      <div class="trade-marker-legend rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Trade dots</p>
+            <h2 class="mt-0.5 text-xs font-bold text-slate-900">One dot per trade row</h2>
+          </div>
+
+          <div class="trade-marker-legend__items">
+            <span class="trade-marker-chip trade-marker-chip--buy">Buy trade</span>
+            <span class="trade-marker-chip trade-marker-chip--sell">Sell trade</span>
+            <span class="trade-marker-chip trade-marker-chip--highlight">Larger size = larger dot</span>
+          </div>
+        </div>
+
+        @if (tradePointsLoading) {
+          <p class="mt-2 text-[0.72rem] font-medium text-slate-600">Loading trade dots...</p>
+        } @else if (tradePointState) {
+          <p class="mt-2 text-[0.72rem] font-medium text-slate-600">{{ tradePointState }}</p>
+        }
+      </div>
 
       <div class="relative min-h-[400px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
         @if (dragSelectionVisible && dragSelectionWidthPx > 0) {

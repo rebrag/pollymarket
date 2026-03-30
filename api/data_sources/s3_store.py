@@ -33,6 +33,11 @@ class S3ParquetDataSource:
                 return []
             raise RuntimeError(f"Failed to fetch market_index.json: {e}") from e
 
+    def trade_object_key_for(self, object_key: str) -> str:
+        if not object_key.endswith(".parquet"):
+            raise ValueError("Expected parquet object key")
+        return f"{object_key[:-8]}__trades.parquet"
+
     @staticmethod
     def _stable_id(object_key: str) -> str:
         if not object_key.strip():
@@ -78,6 +83,10 @@ class S3ParquetDataSource:
                     object_key: str = self._strip_prefix(key)
                     if not self.include_part_files and object_key.rsplit("/", 1)[-1].startswith("part-"):
                         continue
+                    if object_key.endswith("__trades.parquet"):
+                        continue
+                    if "__trades/" in object_key:
+                        continue
                         
                     display_name: str = object_key.rsplit("/", 1)[-1].rsplit(".parquet", 1)[0]
                     objects.append(
@@ -117,3 +126,13 @@ class S3ParquetDataSource:
         payload: bytes = self._read_object_bytes(object_key)
         pf = pq.ParquetFile(BytesIO(payload))
         return pf.metadata.num_rows if pf.metadata is not None else 0
+
+    def object_exists(self, object_key: str) -> bool:
+        key: str = self._key_with_prefix(object_key)
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] in {"404", "NoSuchKey", "NotFound"}:
+                return False
+            raise RuntimeError(f"Failed to check object existence for {key}: {e}") from e

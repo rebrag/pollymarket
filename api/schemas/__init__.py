@@ -6,6 +6,9 @@ from .types import (
     MarketStats,
     MarketSummary,
     PaginatedResponse,
+    TradeBucketDto,
+    TradeRowDto,
+    TradeStatsDto,
 )
 
 __all__ = [
@@ -16,4 +19,7 @@ __all__ = [
     "MarketSeriesPoint",
     "MarketStats",
     "PaginatedResponse",
+    "TradeRowDto",
+    "TradeBucketDto",
+    "TradeStatsDto",
 ]

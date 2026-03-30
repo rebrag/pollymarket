@@ -58,6 +58,42 @@ export interface MarketStats {
   max_best_ask: number | null;
 }
 
+export interface TradeRow {
+  timestamp: number;
+  asset_id: string;
+  price: number;
+  size: number;
+  side: string;
+  fee_rate_bps: number;
+  transaction_hash: string;
+  notional_usd: number;
+}
+
+export interface TradeMarker {
+  bucket_start_ts: number;
+  bucket_end_ts: number;
+  trade_count: number;
+  total_size: number;
+  total_notional_usd: number;
+  max_trade_size: number;
+  max_notional_usd: number;
+  buy_count: number;
+  sell_count: number;
+  avg_price: number;
+  is_large_trade_bucket: boolean;
+  is_high_frequency_bucket: boolean;
+}
+
+export interface TradeStats {
+  trade_count: number;
+  buy_count: number;
+  sell_count: number;
+  max_trade_size: number;
+  max_notional_usd: number;
+  first_ts: number | null;
+  last_ts: number | null;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

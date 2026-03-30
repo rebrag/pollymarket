@@ -16,6 +16,18 @@ class Snapshot:
 
 
 @dataclass(slots=True)
+class TradeRecord:
+    timestamp: float
+    asset_id: str
+    price: float
+    size: float
+    side: str
+    fee_rate_bps: float
+    transaction_hash: str
+    notional_usd: float
+
+
+@dataclass(slots=True)
 class MarketMetadata:
     asset_id: str
     event_slug: str
@@ -269,7 +281,7 @@ class HistoryLogger:
 
         return final_path
 
-    def export_and_cleanup(self, asset_id: str, metadata: MarketMetadata) -> None:
+    def export_and_cleanup(self, asset_id: str, metadata: MarketMetadata) -> str:
         """
         Finalize a market:
           - Flush a final part (if any in-memory history exists)
@@ -297,5 +309,230 @@ class HistoryLogger:
 
         if final_path is None:
             raise ValueError(f"No parquet files generated or found for compaction: {asset_id}")
+
+        return final_path
+
+
+class TradeHistoryLogger:
+    def __init__(self, export_dir: str) -> None:
+        if not export_dir:
+            raise ValueError("export_dir required")
+        self.export_dir: str = export_dir
+        self._history: dict[str, list[TradeRecord]] = {}
+        self._locks: dict[str, threading.Lock] = {}
+        self._part_seq: dict[str, int] = {}
+
+        if not os.path.exists(self.export_dir):
+            os.makedirs(self.export_dir)
+
+    def _lock_for(self, asset_id: str) -> threading.Lock:
+        lock = self._locks.get(asset_id)
+        if lock is None:
+            lock = threading.Lock()
+            self._locks[asset_id] = lock
+        return lock
+
+    def register_asset(self, asset_id: str) -> None:
+        if not asset_id:
+            raise ValueError("asset_id required")
+        with self._lock_for(asset_id):
+            if asset_id not in self._history:
+                self._history[asset_id] = []
+
+    def log_trade(self, asset_id: str, trade: TradeRecord) -> None:
+        with self._lock_for(asset_id):
+            if asset_id not in self._history:
+                raise KeyError(f"Asset {asset_id} not registered")
+            self._history[asset_id].append(trade)
+
+    @staticmethod
+    def _safe_slug(slug: str) -> str:
+        return HistoryLogger._safe_slug(slug)
+
+    @staticmethod
+    def _safe_question(question: str) -> str:
+        return HistoryLogger._safe_question(question)
+
+    def _event_dir(self, metadata: MarketMetadata) -> str:
+        return os.path.join(self.export_dir, self._safe_slug(metadata.event_slug))
+
+    def _parts_dir(self, metadata: MarketMetadata) -> str:
+        return os.path.join(self._event_dir(metadata), f"{self._safe_question(metadata.market_question)}__trades")
+
+    def get_parts_dir(self, metadata: MarketMetadata) -> str:
+        return self._parts_dir(metadata)
+
+    def _final_path(self, metadata: MarketMetadata) -> str:
+        return os.path.join(self._event_dir(metadata), f"{self._safe_question(metadata.market_question)}__trades.parquet")
+
+    def _ensure_dir(self, path: str) -> None:
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+    def _next_part_path(self, asset_id: str, metadata: MarketMetadata) -> str:
+        parts_dir = self._parts_dir(metadata)
+        self._ensure_dir(parts_dir)
+
+        seq = self._part_seq.get(asset_id)
+        if seq is None:
+            existing = glob.glob(os.path.join(parts_dir, "part-*.parquet"))
+            if existing:
+                max_n = 0
+                for p in existing:
+                    base = os.path.basename(p)
+                    try:
+                        n = int(base.replace("part-", "").replace(".parquet", ""))
+                        if n > max_n:
+                            max_n = n
+                    except ValueError:
+                        continue
+                seq = max_n + 1
+            else:
+                seq = 1
+
+        self._part_seq[asset_id] = seq + 1
+        return os.path.join(parts_dir, f"part-{seq:06d}.parquet")
+
+    @staticmethod
+    def _arrow_metadata(metadata: MarketMetadata) -> dict[bytes, bytes]:
+        return HistoryLogger._arrow_metadata(metadata)
+
+    @staticmethod
+    def _table_from_history(history: list[TradeRecord], meta: dict[bytes, bytes]) -> pa.Table:
+        timestamps: list[float] = [trade.timestamp for trade in history]
+        asset_ids: list[str] = [trade.asset_id for trade in history]
+        prices: list[float] = [trade.price for trade in history]
+        sizes: list[float] = [trade.size for trade in history]
+        sides: list[str] = [trade.side for trade in history]
+        fee_rates: list[float] = [trade.fee_rate_bps for trade in history]
+        tx_hashes: list[str] = [trade.transaction_hash for trade in history]
+        notionals: list[float] = [trade.notional_usd for trade in history]
+
+        schema: pa.Schema = pa.schema(
+            [
+                ("timestamp", pa.float64()),
+                ("asset_id", pa.string()),
+                ("price", pa.float64()),
+                ("size", pa.float64()),
+                ("side", pa.string()),
+                ("fee_rate_bps", pa.float64()),
+                ("transaction_hash", pa.string()),
+                ("notional_usd", pa.float64()),
+            ],
+            metadata=meta,
+        )
+
+        return pa.Table.from_arrays(
+            [
+                pa.array(timestamps, type=pa.float64()),
+                pa.array(asset_ids, type=pa.string()),
+                pa.array(prices, type=pa.float64()),
+                pa.array(sizes, type=pa.float64()),
+                pa.array(sides, type=pa.string()),
+                pa.array(fee_rates, type=pa.float64()),
+                pa.array(tx_hashes, type=pa.string()),
+                pa.array(notionals, type=pa.float64()),
+            ],
+            schema=schema,
+        )
+
+    def export_part(self, asset_id: str, metadata: MarketMetadata) -> str | None:
+        with self._lock_for(asset_id):
+            history = self._history.get(asset_id)
+            if not history:
+                return None
+
+            meta = self._arrow_metadata(metadata)
+            table = self._table_from_history(history, meta)
+            part_path = self._next_part_path(asset_id, metadata)
+
+            pq.write_table(table, part_path)
+            self._history[asset_id] = []
+
+            return part_path
+
+    def compact_market(self, metadata: MarketMetadata, delete_parts: bool = True) -> str | None:
+        event_dir = self._event_dir(metadata)
+        parts_dir = self._parts_dir(metadata)
+        final_path = self._final_path(metadata)
+
+        part_paths: list[str] = []
+        if os.path.exists(parts_dir):
+            part_paths = sorted(glob.glob(os.path.join(parts_dir, "part-*.parquet")))
+
+        input_paths: list[str] = []
+        if os.path.exists(final_path):
+            input_paths.append(final_path)
+        input_paths.extend(part_paths)
+
+        if not input_paths:
+            return None
+
+        self._ensure_dir(event_dir)
+
+        tmp_path = final_path + ".tmp"
+        meta = self._arrow_metadata(metadata)
+
+        writer: pq.ParquetWriter | None = None
+        try:
+            for p in input_paths:
+                table = pq.read_table(p)
+                if writer is None:
+                    schema = table.schema.with_metadata(meta)
+                    writer = pq.ParquetWriter(tmp_path, schema=schema)
+                writer.write_table(table)
+
+            if writer is not None:
+                writer.close()
+
+            os.replace(tmp_path, final_path)
+
+        finally:
+            if writer is not None:
+                try:
+                    writer.close()
+                except Exception:
+                    pass
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+
+        if delete_parts:
+            for p in part_paths:
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+            try:
+                os.rmdir(parts_dir)
+            except Exception:
+                pass
+
+        return final_path
+
+    def export_and_cleanup(self, asset_id: str, metadata: MarketMetadata) -> str:
+        with self._lock_for(asset_id):
+            pass
+
+        part_path: str | None = self.export_part(asset_id, metadata)
+        if part_path is not None:
+            print(f"Writing trade parquet part for {metadata.market_question}")
+
+        final_path: str | None = self.compact_market(metadata, delete_parts=True)
+        if final_path is not None:
+            print(f"Writing trade parquet for {metadata.market_question}")
+
+        with self._lock_for(asset_id):
+            if asset_id in self._history:
+                del self._history[asset_id]
+            if asset_id in self._locks:
+                del self._locks[asset_id]
+            if asset_id in self._part_seq:
+                del self._part_seq[asset_id]
+
+        if final_path is None:
+            raise ValueError(f"No trade parquet files generated or found for compaction: {asset_id}")
 
         return final_path

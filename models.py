@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
 import datetime
 
 class Market(TypedDict):
@@ -171,6 +171,35 @@ class LastTradePriceEvent(TypedDict):
     timestamp: str #"timestamp": "1772487573040",
     event_type: str #"event_type": "last_trade_price",
     transaction_hash: str #"transaction_hash": "0xa0af3300ddabb236b11c495c59fed3d68a407f05e820787598fe2e7825448fc0"
+
+
+TradeSide = Literal["BUY", "SELL"]
+
+
+class TradeRow(TypedDict):
+    timestamp: float
+    asset_id: str
+    price: float
+    size: float
+    side: TradeSide
+    fee_rate_bps: float
+    transaction_hash: str
+    notional_usd: float
+
+
+class TradeBucket(TypedDict):
+    bucket_start_ts: float
+    bucket_end_ts: float
+    trade_count: int
+    total_size: float
+    total_notional_usd: float
+    max_trade_size: float
+    max_notional_usd: float
+    buy_count: int
+    sell_count: int
+    avg_price: float
+    is_large_trade_bucket: bool
+    is_high_frequency_bucket: bool
 
 class WSPayload(TypedDict, total=False):
     type: str

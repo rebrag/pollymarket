@@ -14,13 +14,14 @@ from zoneinfo import ZoneInfo
 
 from models import ( WSPayload,Event, Market, Orderbook,BookEvent, PriceChangeEvent,LastTradePriceEvent,AssetUpdate)
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
-from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata
+from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata, TradeHistoryLogger, TradeRecord
 from S3_upload_worker import upload_queue, s3_upload_worker, UPLOAD_WORKER_OFFLINE_MODE
 from dotenv import load_dotenv
 load_dotenv()
 
 
 logger_service: HistoryLogger = HistoryLogger(export_dir="./market_data")
+trade_logger_service: TradeHistoryLogger = TradeHistoryLogger(export_dir="./market_data")
 
 WS_PERFORMANCE_CHECKER_S = 5
 EVENT_REFRESH_SECONDS = 600
@@ -127,6 +128,11 @@ def ensure_logger_registered(asset_id: str) -> None:
     if asset_id not in logger_service._history:
         logger_service.register_asset(asset_id)
 
+
+def ensure_trade_logger_registered(asset_id: str) -> None:
+    if asset_id not in trade_logger_service._history:
+        trade_logger_service.register_asset(asset_id)
+
 def maybe_log_snapshot(
     asset_id: str,
     ts_s: float,
@@ -176,6 +182,29 @@ async def finalize_asset(ws: ClientConnection, asset_id: str, orderbooks: dict[s
     asyncio.create_task(process_export_and_upload(asset_id, meta))
     orderbooks.pop(asset_id, None)
     print(f"Unsubscribed from {meta.market_question} | orderbooks now: {len(orderbooks)}")
+
+
+def trade_record_from_event(event: LastTradePriceEvent) -> TradeRecord:
+    asset_id: str = str(event["asset_id"])
+    price: float = float(event["price"])
+    size: float = float(event["size"])
+    fee_rate_bps: float = float(event["fee_rate_bps"])
+    timestamp: float = float(event["timestamp"]) / 1000.0
+    transaction_hash: str = str(event["transaction_hash"])
+    side: str = str(event["side"]).upper()
+    if side not in {"BUY", "SELL"}:
+        raise ValueError(f"Unexpected trade side: {side}")
+
+    return TradeRecord(
+        timestamp=timestamp,
+        asset_id=asset_id,
+        price=price,
+        size=size,
+        side=side,
+        fee_rate_bps=fee_rate_bps,
+        transaction_hash=transaction_hash,
+        notional_usd=price * size,
+    )
 
 async def refresh_events_loop(ws: ClientConnection, orderbooks: dict[str, Orderbook]) -> None:
     while True:
@@ -252,8 +281,12 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
                                     await finalize_asset(ws, asset_id, orderbooks)
 
                         elif event_type == "last_trade_price":
-                            _trade_event: LastTradePriceEvent = cast(LastTradePriceEvent, ws_event)
-                            pass
+                            trade_event: LastTradePriceEvent = cast(LastTradePriceEvent, ws_event)
+                            asset_id: str = trade_event["asset_id"]
+                            if asset_id not in orderbooks:
+                                continue
+                            ensure_trade_logger_registered(asset_id)
+                            trade_logger_service.log_trade(asset_id, trade_record_from_event(trade_event))
                         elif event_type in {"tick_size_change", "new_market", "best_bid_ask"}: pass
                         else:
                             unhandled_events[event_type] = unhandled_events.get(event_type, 0) + 1
@@ -292,6 +325,12 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
         for asset_id, book_data in list(orderbooks.items()):
             meta: MarketMetadata = market_metadata_from_book(book_data)
             await asyncio.to_thread(logger_service.export_and_cleanup, asset_id, meta)
+            try:
+                trade_file_path: str = await asyncio.to_thread(trade_logger_service.export_and_cleanup, asset_id, meta)
+                if not UPLOAD_WORKER_OFFLINE_MODE:
+                    await upload_queue.put(trade_file_path)
+            except ValueError:
+                pass
         print("Parquet exports complete.")
         try:
             with open("orderbook_dict.txt", "w", encoding="utf-8") as f:
@@ -314,6 +353,12 @@ async def process_export_and_upload(asset_id: str, meta: MarketMetadata) -> None
             await upload_queue.put(file_path)
     except ValueError as e:
         print(f"Export skipped for {asset_id}: {e}")
+    try:
+        trade_file_path: str = await asyncio.to_thread(trade_logger_service.export_and_cleanup, asset_id, meta)
+        if not UPLOAD_WORKER_OFFLINE_MODE:
+            await upload_queue.put(trade_file_path)
+    except ValueError:
+        pass
 
 async def main() -> None:
     events: list[Event] = fetch_and_filter_gamma_events()

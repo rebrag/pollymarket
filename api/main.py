@@ -17,6 +17,9 @@ from api.schemas import (
     MarketStats,
     MarketSummary,
     PaginatedResponse,
+    TradeBucketDto,
+    TradeRowDto,
+    TradeStatsDto,
 )
 from api.service import MarketCatalogService
 from api.utils.downsample import sample_indices
@@ -185,3 +188,96 @@ def get_stats(
         return catalog.get_stats(market_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="market_id not found") from exc
+
+
+@app.get("/api/v1/markets/{market_id}/trades", response_model=PaginatedResponse[TradeRowDto])
+def get_trades(
+    market_id: str,
+    limit: int = Query(default=200, ge=1, le=5000),
+    offset: int = Query(default=0, ge=0),
+    start_ts: float | None = Query(default=None),
+    end_ts: float | None = Query(default=None),
+    min_size: float | None = Query(default=None, ge=0),
+    catalog: MarketCatalogService = Depends(get_catalog),
+) -> PaginatedResponse[TradeRowDto]:
+    if start_ts is not None and end_ts is not None and start_ts > end_ts:
+        raise HTTPException(status_code=422, detail="start_ts must be less than or equal to end_ts")
+
+    try:
+        total, rows = catalog.get_trades(
+            market_id,
+            limit=limit,
+            offset=offset,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            min_size=min_size,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="market_id not found") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="trade data not found") from exc
+
+    return PaginatedResponse[TradeRowDto](items=rows, total=total, limit=limit, offset=offset)
+
+
+@app.get("/api/v1/markets/{market_id}/trade-series", response_model=list[TradeRowDto])
+def get_trade_series(
+    market_id: str,
+    max_points: int = Query(default=3000, ge=1, le=20000),
+    start_ts: float | None = Query(default=None),
+    end_ts: float | None = Query(default=None),
+    min_size: float | None = Query(default=None, ge=0),
+    catalog: MarketCatalogService = Depends(get_catalog),
+) -> list[TradeRowDto]:
+    if start_ts is not None and end_ts is not None and start_ts > end_ts:
+        raise HTTPException(status_code=422, detail="start_ts must be less than or equal to end_ts")
+
+    try:
+        return catalog.get_trade_series(
+            market_id,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            min_size=min_size,
+            max_points=max_points,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="market_id not found") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="trade data not found") from exc
+
+
+@app.get("/api/v1/markets/{market_id}/trade-markers", response_model=list[TradeBucketDto])
+def get_trade_markers(
+    market_id: str,
+    max_points: int = Query(default=250, ge=10, le=5000),
+    start_ts: float | None = Query(default=None),
+    end_ts: float | None = Query(default=None),
+    catalog: MarketCatalogService = Depends(get_catalog),
+) -> list[TradeBucketDto]:
+    if start_ts is not None and end_ts is not None and start_ts > end_ts:
+        raise HTTPException(status_code=422, detail="start_ts must be less than or equal to end_ts")
+
+    try:
+        return catalog.get_trade_markers(market_id, start_ts=start_ts, end_ts=end_ts, max_points=max_points)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="market_id not found") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="trade data not found") from exc
+
+
+@app.get("/api/v1/markets/{market_id}/trade-stats", response_model=TradeStatsDto)
+def get_trade_stats(
+    market_id: str,
+    start_ts: float | None = Query(default=None),
+    end_ts: float | None = Query(default=None),
+    catalog: MarketCatalogService = Depends(get_catalog),
+) -> TradeStatsDto:
+    if start_ts is not None and end_ts is not None and start_ts > end_ts:
+        raise HTTPException(status_code=422, detail="start_ts must be less than or equal to end_ts")
+
+    try:
+        return catalog.get_trade_stats(market_id, start_ts=start_ts, end_ts=end_ts)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="market_id not found") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="trade data not found") from exc

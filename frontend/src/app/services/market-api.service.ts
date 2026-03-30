@@ -10,6 +10,9 @@ import {
   MarketStats,
   MarketSummary,
   PaginatedResponse,
+  TradeMarker,
+  TradeRow,
+  TradeStats,
 } from '../models/api.models';
 import { environment } from '../../environments/environment';
 
@@ -56,5 +59,69 @@ export class MarketApiService {
 
   getStats(marketId: string): Observable<MarketStats> {
     return this.http.get<MarketStats>(`${this.base}/api/v1/markets/${marketId}/stats`);
+  }
+
+  getTrades(
+    marketId: string,
+    limit: number,
+    offset: number,
+    startTs?: number,
+    endTs?: number,
+  ): Observable<PaginatedResponse<TradeRow>> {
+    let params = new HttpParams().set('limit', limit).set('offset', offset);
+    if (startTs != null) {
+      params = params.set('start_ts', startTs);
+    }
+    if (endTs != null) {
+      params = params.set('end_ts', endTs);
+    }
+    return this.http.get<PaginatedResponse<TradeRow>>(`${this.base}/api/v1/markets/${marketId}/trades`, { params });
+  }
+
+  getTradeMarkers(
+    marketId: string,
+    maxPoints: number,
+    startTs?: number,
+    endTs?: number,
+  ): Observable<TradeMarker[]> {
+    let params = new HttpParams().set('max_points', maxPoints);
+    if (startTs != null) {
+      params = params.set('start_ts', startTs);
+    }
+    if (endTs != null) {
+      params = params.set('end_ts', endTs);
+    }
+    return this.http.get<TradeMarker[]>(`${this.base}/api/v1/markets/${marketId}/trade-markers`, { params });
+  }
+
+  getTradeStats(marketId: string, startTs?: number, endTs?: number): Observable<TradeStats> {
+    let params = new HttpParams();
+    if (startTs != null) {
+      params = params.set('start_ts', startTs);
+    }
+    if (endTs != null) {
+      params = params.set('end_ts', endTs);
+    }
+    return this.http.get<TradeStats>(`${this.base}/api/v1/markets/${marketId}/trade-stats`, { params });
+  }
+
+  getTradeSeries(
+    marketId: string,
+    maxPoints: number,
+    minSize?: number,
+    startTs?: number,
+    endTs?: number,
+  ): Observable<TradeRow[]> {
+    let params = new HttpParams().set('max_points', maxPoints);
+    if (minSize != null) {
+      params = params.set('min_size', minSize);
+    }
+    if (startTs != null) {
+      params = params.set('start_ts', startTs);
+    }
+    if (endTs != null) {
+      params = params.set('end_ts', endTs);
+    }
+    return this.http.get<TradeRow[]>(`${this.base}/api/v1/markets/${marketId}/trade-series`, { params });
   }
 }

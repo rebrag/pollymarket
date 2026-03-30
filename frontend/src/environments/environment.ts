@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
-  useLocalFastApi: false,
-  localApiBaseUrl: '',
+  useLocalFastApi: true,
+  localApiBaseUrl: 'http://127.0.0.1:8000',
   onlineApiBaseUrl: 'https://krwvpdmpgw.us-east-1.awsapprunner.com',
-  apiBaseUrl: 'https://krwvpdmpgw.us-east-1.awsapprunner.com',
+  apiBaseUrl: 'http://127.0.0.1:8000',
 };

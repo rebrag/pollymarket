@@ -26,7 +26,11 @@ class LocalParquetDataSource:
         for path in sorted(self.root.rglob("*.parquet")):
             if not self.include_part_files and path.name.startswith("part-"):
                 continue
+            if path.name.endswith("__trades.parquet"):
+                continue
             object_key = path.relative_to(self.root).as_posix()
+            if "__trades/" in object_key:
+                continue
             objects.append(
                 ParquetObject(
                     market_id=self._stable_id(object_key),
@@ -35,6 +39,11 @@ class LocalParquetDataSource:
                 )
             )
         return objects
+
+    def trade_object_key_for(self, object_key: str) -> str:
+        if not object_key.endswith(".parquet"):
+            raise ValueError("Expected parquet object key")
+        return f"{object_key[:-8]}__trades.parquet"
 
     def _resolve(self, object_key: str) -> Path:
         target = (self.root / object_key).resolve()
@@ -63,3 +72,10 @@ class LocalParquetDataSource:
     def read_row_count(self, object_key: str) -> int:
         pf = pq.ParquetFile(self._resolve(object_key))
         return pf.metadata.num_rows if pf.metadata is not None else 0
+
+    def object_exists(self, object_key: str) -> bool:
+        try:
+            self._resolve(object_key)
+            return True
+        except FileNotFoundError:
+            return False

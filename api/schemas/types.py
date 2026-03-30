@@ -67,6 +67,42 @@ class MarketStats(BaseModel):
     max_best_ask: float | None
 
 
+class TradeRowDto(BaseModel):
+    timestamp: float
+    asset_id: str
+    price: float
+    size: float
+    side: str
+    fee_rate_bps: float
+    transaction_hash: str
+    notional_usd: float
+
+
+class TradeBucketDto(BaseModel):
+    bucket_start_ts: float
+    bucket_end_ts: float
+    trade_count: int
+    total_size: float
+    total_notional_usd: float
+    max_trade_size: float
+    max_notional_usd: float
+    buy_count: int
+    sell_count: int
+    avg_price: float
+    is_large_trade_bucket: bool
+    is_high_frequency_bucket: bool
+
+
+class TradeStatsDto(BaseModel):
+    trade_count: int
+    buy_count: int
+    sell_count: int
+    max_trade_size: float
+    max_notional_usd: float
+    first_ts: float | None
+    last_ts: float | None
+
+
 class PaginatedResponse(BaseModel, Generic[T]):
     items: list[T]
     total: int

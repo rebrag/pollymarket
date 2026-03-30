@@ -1,23 +1,27 @@
 import { Component, OnInit, ViewChild, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BaseChartDirective } from 'ng2-charts';
 import { combineLatest } from 'rxjs';
 import { BrnLabelDirective } from '@spartan-ng/ui-label-brain';
 import {
+  BubbleController,
+  BubbleDataPoint,
+  CategoryScale,
   Chart,
-  ChartData,
+  ChartConfigurationCustomTypesPerDataset,
   ChartOptions,
+  Legend,
   LineController,
   LineElement,
-  PointElement,
   LinearScale,
+  Plugin,
+  PointElement,
   ScatterDataPoint,
   Tooltip,
-  Legend,
-  CategoryScale,
-  Plugin,
+  TooltipItem,
 } from 'chart.js';
 
 import {
@@ -27,20 +31,86 @@ import {
   MarketSummary,
   MarketStats,
   PaginatedResponse,
+  TradeRow,
 } from '../../models/api.models';
 import { MarketApiService } from '../../services/market-api.service';
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, Tooltip, Legend, CategoryScale);
+type MixedChartData = ChartConfigurationCustomTypesPerDataset<
+  'line' | 'bubble',
+  (ScatterDataPoint | BubbleDataPoint)[],
+  unknown
+>['data'];
+
+type MixedChartDataset = MixedChartData['datasets'][number];
+
+Chart.register(BubbleController, LineController, LineElement, PointElement, LinearScale, Tooltip, Legend, CategoryScale);
 
 const hoverGuideLinePlugin: Plugin<'line'> = {
   id: 'hoverGuideLine',
-  afterDatasetsDraw(chart) {
-    const active = chart.tooltip?.getActiveElements();
-    if (!active || active.length === 0) {
+  afterEvent(chart, args) {
+    const event = args.event;
+    const chartArea = chart.chartArea;
+    if (!chartArea) {
       return;
     }
 
-    const x = active[0].element.x;
+    const chartWithHover = chart as Chart<'line'> & { hoverGuideLineX?: number };
+    const eventX = typeof event.x === 'number' ? event.x : null;
+    const eventY = typeof event.y === 'number' ? event.y : null;
+    const isInsideChart =
+      eventX !== null &&
+      eventY !== null &&
+      eventX >= chartArea.left &&
+      eventX <= chartArea.right &&
+      eventY >= chartArea.top &&
+      eventY <= chartArea.bottom;
+
+    chartWithHover.hoverGuideLineX = isInsideChart ? eventX : undefined;
+    if (!isInsideChart) {
+      if (chart.tooltip?.getActiveElements().length) {
+        chart.tooltip.setActiveElements([], { x: 0, y: 0 });
+        args.changed = true;
+      }
+      return;
+    }
+
+    const nativeEvent = event.native;
+    if (!(nativeEvent instanceof Event)) {
+      return;
+    }
+
+    const bubbleElements = chart
+      .getElementsAtEventForMode(nativeEvent, 'nearest', { intersect: true, axis: 'xy' }, false)
+      .filter((item) => chart.data.datasets[item.datasetIndex]?.label === 'Trade activity');
+
+    let nextActive = bubbleElements;
+    if (nextActive.length === 0) {
+      const quoteElements = chart
+        .getElementsAtEventForMode(nativeEvent, 'index', { intersect: false, axis: 'x' }, false)
+        .filter((item) => item.datasetIndex < 3);
+      nextActive = quoteElements;
+    }
+
+    const currentActive = chart.tooltip?.getActiveElements() ?? [];
+    const isSameActiveSet =
+      currentActive.length === nextActive.length &&
+      currentActive.every(
+        (item, index) =>
+          item.datasetIndex === nextActive[index]?.datasetIndex && item.index === nextActive[index]?.index,
+      );
+
+    if (!isSameActiveSet) {
+      chart.tooltip?.setActiveElements(nextActive, { x: eventX, y: eventY });
+      args.changed = true;
+    }
+  },
+  afterDatasetsDraw(chart) {
+    const chartWithHover = chart as Chart<'line'> & { hoverGuideLineX?: number };
+    const x = chartWithHover.hoverGuideLineX;
+    if (typeof x !== 'number') {
+      return;
+    }
+
     const { top, bottom } = chart.chartArea;
     const ctx = chart.ctx;
     ctx.save();
@@ -64,7 +134,8 @@ Chart.register(hoverGuideLinePlugin);
   styleUrl: './market-detail-page.component.css',
 })
 export class MarketDetailPageComponent implements OnInit {
-  @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective<'line'>;
+  @ViewChild(BaseChartDirective) private readonly chartDirective?: BaseChartDirective<'line' | 'bubble'>;
+
   private readonly volumeFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -80,12 +151,17 @@ export class MarketDetailPageComponent implements OnInit {
   outcome1Label = 'Outcome 1';
   outcome2Label = 'Outcome 2';
   currentSeriesPoints: MarketSeriesPoint[] = [];
+  currentTradePoints: TradeRow[] = [];
   firstSeriesTimestampMs = 0;
   lastSeriesTimestampMs = 0;
   readonly chartRangeStart = signal('');
   readonly chartRangeEnd = signal('');
+  readonly minTradeSizeInput = signal('0');
+  readonly appliedMinTradeSize = signal('0');
   timeFilterError = '';
   seriesLoading = false;
+  tradePointsLoading = false;
+  tradePointState = '';
   dragSelectionVisible = false;
   dragSelectionLeftPx = 0;
   dragSelectionWidthPx = 0;
@@ -107,15 +183,16 @@ export class MarketDetailPageComponent implements OnInit {
   loadingRelatedMarkets = false;
   relatedMarketsError = '';
 
-  chartData: ChartData<'line', ScatterDataPoint[]> = {
+  chartData: MixedChartData = {
     datasets: [
-      { data: [], label: 'Outcome 1', borderColor: '#0b6b36', tension: 0.15, pointRadius: 0 },
-      { data: [], label: 'Outcome 2', borderColor: '#8f1f1f', tension: 0.15, pointRadius: 0 },
-      { data: [], label: 'Spread (Ask - Bid)', borderColor: '#0f172a', tension: 0.15, pointRadius: 0 },
+      { data: [], label: 'Outcome 1', type: 'line', borderColor: '#0b6b36', tension: 0.15, pointRadius: 0 },
+      { data: [], label: 'Outcome 2', type: 'line', borderColor: '#8f1f1f', tension: 0.15, pointRadius: 0 },
+      { data: [], label: 'Spread (Ask - Bid)', type: 'line', borderColor: '#0f172a', tension: 0.15, pointRadius: 0 },
+      { data: [], label: 'Trade activity', type: 'bubble' },
     ],
   };
 
-  chartOptions: ChartOptions<'line'> = {
+  chartOptions: ChartOptions<'line' | 'bubble'> = {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
@@ -143,32 +220,16 @@ export class MarketDetailPageComponent implements OnInit {
     plugins: {
       legend: { display: true },
       tooltip: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         callbacks: {
           title: (items): string => {
-            const firstItem = items[0];
-            const xValue = firstItem?.parsed.x;
-            if (xValue == null) {
+            const tooltipTimestampMs = this.tooltipTimestampMs(items);
+            if (tooltipTimestampMs == null) {
               return '';
             }
 
-            const pointIndex = firstItem.dataIndex;
-            const actualTimestampMs = this.currentSeriesPoints[pointIndex]?.timestamp
-              ? this.currentSeriesPoints[pointIndex].timestamp * 1000
-              : null;
-
-            if (actualTimestampMs == null) {
-              return new Date(this.firstSeriesTimestampMs + xValue).toLocaleString([], {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-              });
-            }
-
-            return new Date(actualTimestampMs).toLocaleString([], {
+            return new Date(tooltipTimestampMs).toLocaleString([], {
               month: 'short',
               day: 'numeric',
               hour: 'numeric',
@@ -176,11 +237,12 @@ export class MarketDetailPageComponent implements OnInit {
               second: '2-digit',
             });
           },
+          label: (context): string | string[] => this.tooltipLabel(context),
         },
       },
     },
     interaction: {
-      mode: 'index',
+      mode: 'nearest',
       intersect: false,
     },
   };
@@ -262,51 +324,6 @@ export class MarketDetailPageComponent implements OnInit {
     }, 1500);
   }
 
-  private loadAll(): void {
-    this.loading = true;
-    this.error = '';
-    this.relatedMarkets = [];
-    this.selectedRelatedMarketId = '';
-    this.loadingRelatedMarkets = false;
-    this.relatedMarketsError = '';
-
-    this.api.getMetadata(this.marketId).subscribe({
-      next: (metadata) => {
-        this.metadata = metadata;
-        this.updateOutcomeLabels(metadata.outcomes);
-        this.syncDefaultChartRangeInputs();
-        this.renderChart(this.currentSeriesPoints);
-        this.loadRelatedMarkets(metadata.event_slug);
-      },
-      error: (err) => {
-        this.error = `Metadata error: ${err?.message ?? 'unknown error'}`;
-      },
-    });
-
-    this.api.getStats(this.marketId).subscribe({
-      next: (stats) => {
-        this.stats = stats;
-      },
-      error: (err) => {
-        this.error = `Stats error: ${err?.message ?? 'unknown error'}`;
-      },
-    });
-
-    this.loadSeries();
-
-    this.api.getRows(this.marketId, this.limit, this.offset).subscribe({
-      next: (response: PaginatedResponse<MarketRow>) => {
-        this.rows = response.items;
-        this.total = response.total;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = `Rows error: ${err?.message ?? 'unknown error'}`;
-        this.loading = false;
-      },
-    });
-  }
-
   goToSelectedRelatedMarket(): void {
     if (!this.selectedRelatedMarketId || this.selectedRelatedMarketId === this.marketId) {
       return;
@@ -342,6 +359,15 @@ export class MarketDetailPageComponent implements OnInit {
     this.chartRangeStart.set(this.defaultChartRangeStart());
     this.chartRangeEnd.set(this.defaultChartRangeEnd());
     this.timeFilterError = '';
+    this.loadSeriesForCurrentRange();
+  }
+
+  updateMinTradeSizeInput(value: string): void {
+    this.minTradeSizeInput.set(value);
+  }
+
+  applyMinTradeSize(): void {
+    this.appliedMinTradeSize.set(this.minTradeSizeInput());
     this.loadSeriesForCurrentRange();
   }
 
@@ -425,6 +451,69 @@ export class MarketDetailPageComponent implements OnInit {
     this.resetDragSelection();
   }
 
+  readonly excludedMetadataKeys: string[] = [
+    'asset_id',
+    'event_slug',
+    'event_title',
+    'market_question',
+    'image_url',
+  ];
+
+  formatMetadataKey(key: string): string {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+  }
+
+  getTimestampMs(value: unknown): number {
+    return Number(value) * 1000;
+  }
+
+  private loadAll(): void {
+    this.loading = true;
+    this.error = '';
+    this.relatedMarkets = [];
+    this.selectedRelatedMarketId = '';
+    this.loadingRelatedMarkets = false;
+    this.relatedMarketsError = '';
+    this.currentTradePoints = [];
+    this.tradePointState = '';
+
+    this.api.getMetadata(this.marketId).subscribe({
+      next: (metadata) => {
+        this.metadata = metadata;
+        this.updateOutcomeLabels(metadata.outcomes);
+        this.syncDefaultChartRangeInputs();
+        this.renderChart(this.currentSeriesPoints, this.currentTradePoints);
+        this.loadRelatedMarkets(metadata.event_slug);
+      },
+      error: (err) => {
+        this.error = `Metadata error: ${err?.message ?? 'unknown error'}`;
+      },
+    });
+
+    this.api.getStats(this.marketId).subscribe({
+      next: (stats) => {
+        this.stats = stats;
+      },
+      error: (err) => {
+        this.error = `Stats error: ${err?.message ?? 'unknown error'}`;
+      },
+    });
+
+    this.loadSeries();
+
+    this.api.getRows(this.marketId, this.limit, this.offset).subscribe({
+      next: (response: PaginatedResponse<MarketRow>) => {
+        this.rows = response.items;
+        this.total = response.total;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = `Rows error: ${err?.message ?? 'unknown error'}`;
+        this.loading = false;
+      },
+    });
+  }
+
   private loadSeriesForCurrentRange(): void {
     const startInput = this.chartRangeStart().trim();
     const endInput = this.chartRangeEnd().trim();
@@ -462,7 +551,7 @@ export class MarketDetailPageComponent implements OnInit {
   private setChartData(points: MarketSeriesPoint[]): void {
     this.lastSeriesTimestampMs = (points.at(-1)?.timestamp ?? 0) * 1000;
     this.syncDefaultChartRangeInputs();
-    this.renderChart(points);
+    this.renderChart(points, this.currentTradePoints);
   }
 
   private syncDefaultChartRangeInputs(): void {
@@ -493,6 +582,9 @@ export class MarketDetailPageComponent implements OnInit {
 
   private loadSeries(startTs?: number, endTs?: number): void {
     this.seriesLoading = true;
+    this.tradePointsLoading = true;
+    const minTradeSize: number | undefined = this.parseMinTradeSize();
+
     this.api.getSeries(this.marketId, 400, startTs, endTs).subscribe({
       next: (series) => {
         this.setChartData(series);
@@ -501,6 +593,27 @@ export class MarketDetailPageComponent implements OnInit {
       error: (err) => {
         this.error = `Series error: ${err?.message ?? 'unknown error'}`;
         this.seriesLoading = false;
+      },
+    });
+
+    this.api.getTradeSeries(this.marketId, 3000, minTradeSize, startTs, endTs).subscribe({
+      next: (trades) => {
+        this.currentTradePoints = trades;
+        this.tradePointState = trades.length > 0 ? '' : 'No trades matched the selected range and minimum size.';
+        this.renderChart(this.currentSeriesPoints, trades);
+        this.tradePointsLoading = false;
+      },
+      error: (err: HttpErrorResponse) => {
+        if (err.status === 404) {
+          this.currentTradePoints = [];
+          this.tradePointState = 'No trade data available yet.';
+          this.renderChart(this.currentSeriesPoints, []);
+          this.tradePointsLoading = false;
+          return;
+        }
+
+        this.tradePointState = 'Trade dots unavailable.';
+        this.tradePointsLoading = false;
       },
     });
   }
@@ -530,29 +643,101 @@ export class MarketDetailPageComponent implements OnInit {
     this.dragCurrentPixelX = 0;
   }
 
-  private renderChart(points: MarketSeriesPoint[]): void {
+  private tooltipLabel(context: TooltipItem<'line' | 'bubble'>): string | string[] {
+    if (context.dataset.label === 'Trade activity') {
+      const trade = this.currentTradePoints[context.dataIndex];
+      if (!trade) {
+        return 'Trade activity';
+      }
+
+      return [
+        `Trade: ${trade.side}`,
+        `Chart price: ${this.tradeDisplayPrice(trade).toFixed(3)}`,
+        `Raw price: ${trade.price.toFixed(3)}`,
+        `Size: ${trade.size.toFixed(3)}`,
+        `Notional: ${this.formatVolume(trade.notional_usd)}`,
+      ];
+    }
+
+    if (context.datasetIndex !== 0) {
+      return '';
+    }
+
+    const seriesPoint = this.currentSeriesPoints[context.dataIndex];
+    if (!seriesPoint) {
+      const value = typeof context.parsed.y === 'number' ? context.parsed.y.toFixed(3) : '';
+      return `${context.dataset.label}: ${value}`;
+    }
+
+    return [
+      `${this.outcome1Label}: ${seriesPoint.best_ask.toFixed(3)}`,
+      `${this.outcome2Label}: ${(1 - seriesPoint.best_bid).toFixed(3)}`,
+      `Spread (Ask - Bid): ${(seriesPoint.best_ask - seriesPoint.best_bid).toFixed(3)}`,
+    ];
+  }
+
+  private tooltipTimestampMs(items: TooltipItem<'line' | 'bubble'>[]): number | null {
+    if (items.length === 0) {
+      return null;
+    }
+
+    const tradeItem = items.find((item) => item.dataset.label === 'Trade activity');
+    if (tradeItem) {
+      const trade = this.currentTradePoints[tradeItem.dataIndex];
+      return trade ? trade.timestamp * 1000 : null;
+    }
+
+    const seriesItem = items[0];
+    const seriesPoint = this.currentSeriesPoints[seriesItem.dataIndex];
+    if (seriesPoint) {
+      return seriesPoint.timestamp * 1000;
+    }
+
+    const xValue = seriesItem?.parsed.x;
+    if (typeof xValue !== 'number') {
+      return null;
+    }
+
+    return this.firstSeriesTimestampMs + xValue;
+  }
+
+  private renderChart(points: MarketSeriesPoint[], trades: TradeRow[]): void {
     this.currentSeriesPoints = points;
-    const firstTimestamp = points[0]?.timestamp ?? 0;
+    this.currentTradePoints = trades;
+
+    const firstTimestamp = points[0]?.timestamp ?? trades[0]?.timestamp ?? 0;
     this.firstSeriesTimestampMs = firstTimestamp * 1000;
 
-    const chartPoints = points.map((point): ScatterDataPoint => ({
+    const chartPoints: ScatterDataPoint[] = points.map((point): ScatterDataPoint => ({
       x: (point.timestamp - firstTimestamp) * 1000,
       y: point.best_ask,
     }));
-    const invertedChartPoints = points.map((point): ScatterDataPoint => ({
+    const invertedChartPoints: ScatterDataPoint[] = points.map((point): ScatterDataPoint => ({
       x: (point.timestamp - firstTimestamp) * 1000,
       y: 1.0 - point.best_bid,
     }));
-    const spreadPoints = points.map((point): ScatterDataPoint => ({
+    const spreadPoints: ScatterDataPoint[] = points.map((point): ScatterDataPoint => ({
       x: (point.timestamp - firstTimestamp) * 1000,
       y: point.best_ask - point.best_bid,
     }));
+
+    const maxTradeSize = Math.max(...trades.map((trade) => trade.size), 0);
+    const tradeBubblePoints: BubbleDataPoint[] = trades.map((trade): BubbleDataPoint => {
+      return {
+        x: (trade.timestamp - firstTimestamp) * 1000,
+        y: this.tradeDisplayPrice(trade),
+        r: this.tradeBubbleRadius(trade.size, maxTradeSize),
+      };
+    });
+
+    const tradeDataset = this.tradeBubbleDataset(tradeBubblePoints, trades);
 
     this.chartData = {
       datasets: [
         {
           data: chartPoints,
           label: this.outcome1Label,
+          type: 'line',
           borderColor: '#0b6b36',
           pointRadius: 0,
           tension: 0.15,
@@ -560,6 +745,7 @@ export class MarketDetailPageComponent implements OnInit {
         {
           data: invertedChartPoints,
           label: this.outcome2Label,
+          type: 'line',
           borderColor: '#8f1f1f',
           pointRadius: 0,
           tension: 0.15,
@@ -567,15 +753,22 @@ export class MarketDetailPageComponent implements OnInit {
         {
           data: spreadPoints,
           label: 'Spread (Ask - Bid)',
+          type: 'line',
           borderColor: '#0f172a',
           pointRadius: 0,
           tension: 0.15,
         },
+        tradeDataset,
       ],
     };
 
-    const lastElapsedMs = chartPoints.at(-1)?.x ?? 0;
-    if (!this.chartOptions.scales?.['x']) {
+    const allXValues = [
+      ...chartPoints.map((point) => point.x),
+      ...tradeBubblePoints.map((point) => point.x),
+    ].filter((value): value is number => typeof value === 'number');
+    const lastElapsedMs = allXValues.length > 0 ? Math.max(...allXValues) : 0;
+    const xAxisOptions = this.chartOptions.scales?.['x'];
+    if (!xAxisOptions) {
       throw new Error('Expected x-axis chart options to be configured.');
     }
 
@@ -584,7 +777,7 @@ export class MarketDetailPageComponent implements OnInit {
       scales: {
         ...this.chartOptions.scales,
         x: {
-          ...this.chartOptions.scales['x'],
+          ...xAxisOptions,
           min: 0,
           max: lastElapsedMs,
         },
@@ -592,9 +785,68 @@ export class MarketDetailPageComponent implements OnInit {
     };
   }
 
+  private tradeBubbleDataset(points: BubbleDataPoint[], trades: TradeRow[]): MixedChartDataset {
+    const backgroundColor: string[] = trades.map((trade) => {
+      if (trade.side === 'BUY') {
+        return 'rgba(22, 163, 74, 0.28)';
+      }
+      if (trade.side === 'SELL') {
+        return 'rgba(220, 38, 38, 0.28)';
+      }
+      return 'rgba(71, 85, 105, 0.26)';
+    });
+
+    const borderColor: string[] = trades.map((trade) => {
+      if (trade.side === 'BUY') {
+        return 'rgba(21, 128, 61, 0.9)';
+      }
+      if (trade.side === 'SELL') {
+        return 'rgba(185, 28, 28, 0.9)';
+      }
+      return 'rgba(51, 65, 85, 0.8)';
+    });
+
+    return {
+      data: points,
+      label: 'Trade activity',
+      type: 'bubble',
+      backgroundColor,
+      borderColor,
+      borderWidth: 2,
+      hoverBorderWidth: 3,
+    };
+  }
+
+  private tradeBubbleRadius(value: number, maxValue: number): number {
+    if (maxValue <= 0) {
+      return 0;
+    }
+    const scaled = value / maxValue;
+    return 4 + (scaled * 10);
+  }
+
+  private tradeDisplayPrice(trade: TradeRow): number {
+    return trade.side === 'SELL' ? 1 - trade.price : trade.price;
+  }
+
+  private parseMinTradeSize(): number | undefined {
+    const rawSignalValue = this.appliedMinTradeSize();
+    const rawValue = String(rawSignalValue ?? '').trim();
+    if (!rawValue) {
+      return undefined;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+      return undefined;
+    }
+
+    return parsedValue;
+  }
+
   private updateOutcomeLabels(outcomesRaw: string): void {
     try {
-      const parsed = JSON.parse(outcomesRaw);
+      const parsed: unknown = JSON.parse(outcomesRaw);
       if (Array.isArray(parsed) && parsed.length >= 2) {
         this.outcome1Label = String(parsed[0] ?? 'Outcome 1');
         this.outcome2Label = String(parsed[1] ?? 'Outcome 2');
@@ -658,22 +910,4 @@ export class MarketDetailPageComponent implements OnInit {
       queryParamsHandling: 'merge',
     });
   }
-
-  readonly excludedMetadataKeys: string[] = [
-    'asset_id',
-    'event_slug',
-    'event_title',
-    'market_question',
-    'image_url' 
-  ];
-
-  formatMetadataKey(key: string): string {
-    return key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
-  }
-
-  getTimestampMs(value: unknown): number {
-    return Number(value) * 1000;
-  }
-
-  
 }

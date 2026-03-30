@@ -11,6 +11,7 @@ load_dotenv()
 UPLOAD_WORKER_OFFLINE_MODE: bool = os.environ.get("UPLOAD_WORKER_OFFLINE_MODE", "True").lower() == "true"
 S3_BUCKET_NAME: str = os.environ.get("S3_BUCKET_NAME", "")
 INDEX_FILE_KEY: str = "market_index.json"
+TRADE_FILE_SUFFIX: str = "__trades.parquet"
 
 print(f"\n--- S3 UPLOAD WORKER INITIALIZED | OFFLINE_MODE: {UPLOAD_WORKER_OFFLINE_MODE} ---\n")
 
@@ -70,7 +71,8 @@ def upload_to_s3_and_delete(file_path: str, bucket: str, object_name: str) -> No
 
     new_meta: dict[str, str] = _extract_metadata(file_path)
     s3_client.upload_file(file_path, bucket, object_name)
-    _update_remote_index(bucket, new_meta, object_name)
+    if not object_name.endswith(TRADE_FILE_SUFFIX):
+        _update_remote_index(bucket, new_meta, object_name)
     os.remove(file_path)
 
 async def s3_upload_worker() -> None:

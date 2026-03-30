@@ -14,3 +14,37 @@
     transform: translateX(calc(-100% + min(92vw, 100%)));
   }
 }
+
+.trade-marker-legend__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.trade-marker-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.trade-marker-chip--buy {
+  border-color: rgba(21, 128, 61, 0.18);
+  background: rgba(22, 163, 74, 0.12);
+  color: rgb(21, 128, 61);
+}
+
+.trade-marker-chip--sell {
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(220, 38, 38, 0.12);
+  color: rgb(185, 28, 28);
+}
+
+.trade-marker-chip--highlight {
+  border-color: rgba(217, 119, 6, 0.2);
+  background: rgba(245, 158, 11, 0.12);
+  color: rgb(180, 83, 9);
+}
