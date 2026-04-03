@@ -5,6 +5,6 @@ import { MarketDetailPageComponent } from './pages/market-detail/market-detail-p
 
 export const routes: Routes = [
   { path: '', component: ExplorerPageComponent },
-  { path: 'markets/:marketId', component: MarketDetailPageComponent },
+  { path: 'markets/:eventSlug', component: MarketDetailPageComponent },
   { path: '**', redirectTo: '' },
 ];

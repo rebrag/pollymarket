@@ -182,7 +182,7 @@
                   @for (market of marketsForEvent(event.event_slug); track market.market_id) {
                     <a
                       class="flex items-center justify-between gap-3 rounded-xl border border-transparent bg-sky-100/60 px-3 py-3 text-inherit no-underline transition hover:-translate-y-px hover:border-sky-300 hover:bg-blue-100"
-                      [routerLink]="['/markets', market.market_id]"
+                      [routerLink]="['/markets', market.event_slug]"
                     >
                       <div class="flex min-w-0 items-center gap-3">
                         @if (market.image_url) {

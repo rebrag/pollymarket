@@ -130,7 +130,7 @@
 
       <article class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
         <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Event markets</p>
-        <h2 class="mt-0.5 text-xs font-bold text-slate-900">Related market</h2>
+        <h2 class="mt-0.5 text-xs font-bold text-slate-900">Markets in event</h2>
 
         @if (relatedMarketsError) {
           <p class="mt-2.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[0.72rem] font-medium text-rose-700">
@@ -143,7 +143,7 @@
         } @else if (relatedMarkets.length > 0) {
           <div class="mt-2.5 flex flex-col gap-2">
             <div>
-              <span class="mb-1 block text-[0.68rem] font-semibold text-slate-700">Other markets</span>
+              <span class="mb-1 block text-[0.68rem] font-semibold text-slate-700">Select market</span>
               <div class="max-h-64 overflow-y-auto rounded-lg border border-slate-300 bg-slate-50 p-1">
                 @for (market of relatedMarkets; track market.market_id) {
                   <button
@@ -168,15 +168,6 @@
                 }
               </div>
             </div>
-
-            <button
-              type="button"
-              class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-[0.72rem] font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              (click)="goToSelectedRelatedMarket()"
-              [disabled]="!selectedRelatedMarketId || selectedRelatedMarketId === marketId"
-            >
-              Open Market
-            </button>
           </div>
         } @else {
           <p class="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[0.72rem] text-slate-600">

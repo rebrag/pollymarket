@@ -143,6 +143,7 @@ export class MarketDetailPageComponent implements OnInit {
   });
 
   readonly Math = Math;
+  eventSlug = '';
   marketId = '';
   metadata: MarketMetadataDto | null = null;
   stats: MarketStats | null = null;
@@ -255,15 +256,15 @@ export class MarketDetailPageComponent implements OnInit {
 
   ngOnInit(): void {
     combineLatest([this.route.paramMap, this.route.queryParamMap]).subscribe(([params, query]) => {
-      this.marketId = params.get('marketId') ?? '';
+      this.eventSlug = params.get('eventSlug') ?? '';
       this.limit = Number(query.get('limit') ?? 100);
       this.offset = Number(query.get('offset') ?? 0);
 
-      if (!this.marketId) {
-        this.error = 'Missing market id';
+      if (!this.eventSlug) {
+        this.error = 'Missing event slug';
         return;
       }
-      this.loadAll();
+      this.loadEventPage();
     });
   }
 
@@ -324,21 +325,15 @@ export class MarketDetailPageComponent implements OnInit {
     }, 1500);
   }
 
-  goToSelectedRelatedMarket(): void {
-    if (!this.selectedRelatedMarketId || this.selectedRelatedMarketId === this.marketId) {
+  selectRelatedMarket(marketId: string): void {
+    if (!marketId || marketId === this.marketId) {
+      this.selectedRelatedMarketId = marketId;
       return;
     }
 
-    this.router.navigate(['/markets', this.selectedRelatedMarketId], {
-      queryParams: {
-        limit: this.limit,
-        offset: 0,
-      },
-    });
-  }
-
-  selectRelatedMarket(marketId: string): void {
     this.selectedRelatedMarketId = marketId;
+    this.offset = 0;
+    this.loadSelectedMarket(marketId);
   }
 
   formatVolume(volume: number): string {
@@ -467,51 +462,23 @@ export class MarketDetailPageComponent implements OnInit {
     return Number(value) * 1000;
   }
 
-  private loadAll(): void {
+  private loadEventPage(): void {
     this.loading = true;
     this.error = '';
+    this.metadata = null;
+    this.stats = null;
+    this.rows = [];
+    this.total = 0;
+    this.marketId = '';
     this.relatedMarkets = [];
     this.selectedRelatedMarketId = '';
     this.loadingRelatedMarkets = false;
     this.relatedMarketsError = '';
     this.currentTradePoints = [];
     this.tradePointState = '';
-
-    this.api.getMetadata(this.marketId).subscribe({
-      next: (metadata) => {
-        this.metadata = metadata;
-        this.updateOutcomeLabels(metadata.outcomes);
-        this.syncDefaultChartRangeInputs();
-        this.renderChart(this.currentSeriesPoints, this.currentTradePoints);
-        this.loadRelatedMarkets(metadata.event_slug);
-      },
-      error: (err) => {
-        this.error = `Metadata error: ${err?.message ?? 'unknown error'}`;
-      },
-    });
-
-    this.api.getStats(this.marketId).subscribe({
-      next: (stats) => {
-        this.stats = stats;
-      },
-      error: (err) => {
-        this.error = `Stats error: ${err?.message ?? 'unknown error'}`;
-      },
-    });
-
-    this.loadSeries();
-
-    this.api.getRows(this.marketId, this.limit, this.offset).subscribe({
-      next: (response: PaginatedResponse<MarketRow>) => {
-        this.rows = response.items;
-        this.total = response.total;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = `Rows error: ${err?.message ?? 'unknown error'}`;
-        this.loading = false;
-      },
-    });
+    this.currentSeriesPoints = [];
+    this.renderChart([], []);
+    this.loadRelatedMarkets(this.eventSlug);
   }
 
   private loadSeriesForCurrentRange(): void {
@@ -581,6 +548,11 @@ export class MarketDetailPageComponent implements OnInit {
   }
 
   private loadSeries(startTs?: number, endTs?: number): void {
+    if (!this.marketId) {
+      this.seriesLoading = false;
+      this.tradePointsLoading = false;
+      return;
+    }
     this.seriesLoading = true;
     this.tradePointsLoading = true;
     const minTradeSize: number | undefined = this.parseMinTradeSize();
@@ -886,16 +858,75 @@ export class MarketDetailPageComponent implements OnInit {
           }
           return b.row_count - a.row_count;
         });
-        if (this.relatedMarkets.some((m) => m.market_id === this.marketId)) {
-          this.selectedRelatedMarketId = this.marketId;
-        } else {
-          this.selectedRelatedMarketId = this.relatedMarkets[0]?.market_id ?? '';
-        }
+        const defaultMarketId: string = this.relatedMarkets[0]?.market_id ?? '';
+        this.selectedRelatedMarketId = defaultMarketId;
         this.loadingRelatedMarkets = false;
+        if (!defaultMarketId) {
+          this.loading = false;
+          return;
+        }
+        this.loadSelectedMarket(defaultMarketId);
       },
       error: (err) => {
         this.relatedMarketsError = `Related markets error: ${err?.message ?? 'unknown error'}`;
         this.loadingRelatedMarkets = false;
+        this.loading = false;
+      },
+    });
+  }
+
+  private loadSelectedMarket(marketId: string): void {
+    if (!marketId) {
+      return;
+    }
+
+    this.marketId = marketId;
+    this.loading = true;
+    this.error = '';
+    this.metadata = null;
+    this.stats = null;
+    this.rows = [];
+    this.total = 0;
+    this.currentTradePoints = [];
+    this.currentSeriesPoints = [];
+    this.tradePointState = '';
+    this.chartRangeStart.set('');
+    this.chartRangeEnd.set('');
+    this.renderChart([], []);
+
+    this.api.getMetadata(this.marketId).subscribe({
+      next: (metadata) => {
+        this.metadata = metadata;
+        this.updateOutcomeLabels(metadata.outcomes);
+        this.syncDefaultChartRangeInputs();
+        this.renderChart(this.currentSeriesPoints, this.currentTradePoints);
+      },
+      error: (err) => {
+        this.error = `Metadata error: ${err?.message ?? 'unknown error'}`;
+      },
+    });
+
+    this.api.getStats(this.marketId).subscribe({
+      next: (stats) => {
+        this.stats = stats;
+        this.syncDefaultChartRangeInputs();
+      },
+      error: (err) => {
+        this.error = `Stats error: ${err?.message ?? 'unknown error'}`;
+      },
+    });
+
+    this.loadSeries();
+
+    this.api.getRows(this.marketId, this.limit, this.offset).subscribe({
+      next: (response: PaginatedResponse<MarketRow>) => {
+        this.rows = response.items;
+        this.total = response.total;
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = `Rows error: ${err?.message ?? 'unknown error'}`;
+        this.loading = false;
       },
     });
   }
