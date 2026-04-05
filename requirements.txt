@@ -6,3 +6,5 @@ numpy>=2.3,<3.0
 python-dotenv>=1.1,<2.0
 pytest>=8.4,<9.0
 httpx>=0.28,<1.0
+websockets>=13.0,<15.0
+dearpygui>=2.0,<3.0
