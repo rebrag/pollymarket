@@ -209,6 +209,9 @@ class WSPayload(TypedDict, total=False):
 
 class Orderbook(TypedDict):
     asset_id: str
+    outcome: str          # e.g. "Yes" — the outcome this token represents
+    paired_asset_id: str  # the complementary token in the same binary market
+    paired_outcome: str   # e.g. "No"
     event_slug: str
     event_title: str
     market_question: str

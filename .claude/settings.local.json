@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /tmp)",
+      "Bash(unzip -l fa-free.zip)",
+      "WebFetch(domain:api.github.com)"
+    ]
+  }
+}

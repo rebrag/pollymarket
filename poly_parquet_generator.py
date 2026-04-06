@@ -12,8 +12,14 @@ import datetime
 import time
 from zoneinfo import ZoneInfo
 
-from models import ( WSPayload,Event, Market, Orderbook,BookEvent, PriceChangeEvent,LastTradePriceEvent,AssetUpdate)
+from models import (Event, Orderbook, BookEvent, PriceChangeEvent, LastTradePriceEvent)
 from fetch_and_filter_gamma_events import fetch_and_filter_gamma_events
+from clob_core import (
+    WS_URL,
+    parse_asset_id, create_orderbook_skeleton, create_orderbooks,
+    hydrate_orderbook, apply_price_change, best_prices_from_book, should_unsubscribe,
+    ws_initial_subscribe, ws_subscribe_more, ws_unsubscribe,
+)
 from history_logger_updated import HistoryLogger, Snapshot, MarketMetadata, TradeHistoryLogger, TradeRecord
 from S3_upload_worker import upload_queue, s3_upload_worker, UPLOAD_WORKER_OFFLINE_MODE
 from dotenv import load_dotenv
@@ -26,7 +32,6 @@ trade_logger_service: TradeHistoryLogger = TradeHistoryLogger(export_dir="./mark
 WS_PERFORMANCE_CHECKER_S = 5
 EVENT_REFRESH_SECONDS = 600
 SNAPSHOT_COALESCE_S = 0.5
-WS_URL: str = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 inactive_assets: set[str] = set()
 
 async def log_unhandled_event(event: object) -> None:
@@ -47,63 +52,6 @@ def receive_ws_message(message: any):
     except json.JSONDecodeError as e:
         print(f'\nCRASH DETECTED: [{e}] | RAW PAYLOAD: {repr(raw_str)}\n')
 
-def initial_subscribe_for_assets(asset_ids: list[str]) -> str:
-    payload: WSPayload = {"type": "market", "assets_ids": asset_ids, "initial_dump": True}
-    print(json.dumps(payload))
-    return json.dumps(payload)
-
-def subscribe_more_assets(asset_ids: list[str]) -> str:
-    payload: WSPayload = {"assets_ids": asset_ids, "operation": "subscribe", "custom_feature_enabled": False}
-    print(json.dumps(payload))
-    return json.dumps(payload)
-
-def get_unsubscribe_msg(asset_ids: list[str]) -> str:
-    payload: WSPayload = {"operation": "unsubscribe", "assets_ids": asset_ids}
-    print(json.dumps(payload))
-    return json.dumps(payload)
-
-
-def convert_polymarket_gamestarttime(time_str: str) -> float:
-    if not time_str:
-        raise ValueError("time_str must be provided")
-    parsed_dt: datetime.datetime = datetime.datetime.fromisoformat(time_str)
-    return parsed_dt.timestamp()
-
-def parse_asset_id(market: Market) -> str:
-    raw_ids: str = market["clobTokenIds"]
-    return raw_ids.strip('[]"').partition('",')[0]
-
-def create_orderbook_skeleton(event: Event, market: Market, asset_id: str) -> Orderbook:
-    return {
-        "asset_id": asset_id,
-        "event_slug": event.get("slug", ""),
-        "event_title": event.get("title", ""),
-        "market_question": market.get("question", ""),
-        "outcomes": market.get("outcomes", "[]"),
-        "min_tick_size": float(market.get("orderPriceMinTickSize", 0.001)),
-        "min_order_size": int(market.get("orderMinSize", 5)),
-        "is_neg_risk": bool(market.get("negRisk", False)),
-        "lastTradePrice": float(market.get("lastTradePrice", 0.0)),
-        "spread": float(market.get("spread", 0.0)),
-        "is_active": bool(market.get("active", False)),
-        "game_start_time": convert_polymarket_gamestarttime(market.get("gameStartTime", "")),
-        "bids": {},
-        "asks": {},
-        "volume": float(market.get("volume", 0.0)),
-        "volume_24hr": float(market.get("volume24hr", 0.0)),
-        "liquidity": float(market.get("liquidity", 0.0)),
-        "image_url": market.get("image", ""),
-        "resolution_source": market.get("resolutionSource", ""),
-        "end_date": market.get("endDate", "")
-    }
-
-def create_orderbooks(events: list[Event]) -> dict[str, Orderbook]:
-    books: dict[str, Orderbook] = {}
-    for event in events:
-        for market in event["markets"]:
-            asset_id: str = parse_asset_id(market)
-            books[asset_id] = create_orderbook_skeleton(event, market, asset_id)
-    return books
 
 def market_metadata_from_book(book: Orderbook) -> MarketMetadata:
     return MarketMetadata(
@@ -148,26 +96,6 @@ def maybe_log_snapshot(
     logger_service.log_snapshot(asset_id, Snapshot(timestamp=ts_s, best_bid=best_bid, best_ask=best_ask))
     last_snapshot_ts[asset_id] = ts_s
 
-def hydrate_orderbook(target_book: Orderbook, event: BookEvent) -> None:
-    target_book["bids"] = {lvl["price"]: float(lvl["size"]) for lvl in event.get("bids", [])}
-    target_book["asks"] = {lvl["price"]: float(lvl["size"]) for lvl in event.get("asks", [])}
-    last_price_str: str = event.get("last_trade_price", "0")
-    if last_price_str and last_price_str != "0":
-        target_book["last_price"] = float(last_price_str)
-    ts_val = event.get("timestamp")
-    if ts_val:
-        event_ms: float = float(ts_val)
-        target_book["last_update"] = datetime.datetime.fromtimestamp(event_ms / 1000.0, tz=datetime.timezone.utc)
-
-def best_prices_from_book(book: Orderbook) -> tuple[float, float]:
-    bids = cast(dict[str, float], book.get("bids", {}))
-    asks = cast(dict[str, float], book.get("asks", {}))
-    best_bid: float = max((float(p) for p, sz in bids.items() if sz > 0), default=0.0)
-    best_ask: float = min((float(p) for p, sz in asks.items() if sz > 0), default=1.0)
-    return best_bid, best_ask
-
-def should_unsubscribe(best_bid: float, best_ask: float) -> bool:
-    return best_bid >= 0.999 or best_ask <= 0.001
 
 async def finalize_asset(ws: ClientConnection, asset_id: str, orderbooks: dict[str, Orderbook]) -> None:
     if asset_id in inactive_assets:
@@ -176,7 +104,7 @@ async def finalize_asset(ws: ClientConnection, asset_id: str, orderbooks: dict[s
     if book is None:
         inactive_assets.add(asset_id)
         return
-    await ws.send(get_unsubscribe_msg([asset_id]))
+    await ws.send(ws_unsubscribe([asset_id]))
     inactive_assets.add(asset_id)
     meta: MarketMetadata = market_metadata_from_book(book)
     asyncio.create_task(process_export_and_upload(asset_id, meta))
@@ -221,7 +149,7 @@ async def refresh_events_loop(ws: ClientConnection, orderbooks: dict[str, Orderb
                 new_asset_ids.append(asset_id)
         if new_asset_ids:
             print(f"Subscribing to {len(new_asset_ids)} new assets")
-            await ws.send(subscribe_more_assets(new_asset_ids))
+            await ws.send(ws_subscribe_more(new_asset_ids))
 
 def process_book_message(ws_event: BookEvent, orderbooks: list[Orderbook], last_snapshot_ts):
     book_event: BookEvent = cast(BookEvent, ws_event)
@@ -240,7 +168,7 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
             refresh_task: asyncio.Task[None] | None = None
             try:
                 async with websockets.connect(WS_URL, ping_interval=10, ping_timeout=10) as ws:
-                    await ws.send(initial_subscribe_for_assets(list(orderbooks)))
+                    await ws.send(ws_initial_subscribe(list(orderbooks)))
                     print(f"Connected and subscribed to {len(orderbooks)} assets. Listening...")
                     refresh_task = asyncio.create_task(refresh_events_loop(ws, orderbooks))
 
