@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m py_compile DPG-PolyTerminal/main.py)",
+      "Bash(python -c ':*)",
+      "Bash(python3 DPG-PolyTerminal/main.py --help)",
+      "Bash(/c/Python314/python -m py_compile c:/Users/thejo/Documents/Dev/sweattheline/DPG-PolyTerminal/main.py)"
+    ]
+  }
+}

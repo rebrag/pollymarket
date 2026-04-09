@@ -114,6 +114,22 @@ def apply_price_change(book: Orderbook, change: dict) -> None:
             book["asks"][price] = size
 
 
+def apply_tick_size_change(book: Orderbook, new_tick: float) -> None:
+    """Update a book's min_tick_size in place (called on tick_size_change events
+    and when a price_change contains a 3-decimal price on a 2-decimal market)."""
+    book["min_tick_size"] = new_tick
+
+
+def has_sub_cent_price(price_str: str) -> bool:
+    """Return True if price_str has 3 or more significant decimal places (e.g. '0.131').
+    Uses only index arithmetic — no string allocation — so it's safe in the hot WS path.
+    Polymarket does not emit trailing zeros, so '0.131' and '0.001' both return True,
+    while '0.13' and '0.10' return False.
+    """
+    dot = price_str.find(".")
+    return dot >= 0 and (len(price_str) - dot - 1) >= 3
+
+
 # ── Derived book state ────────────────────────────────────────────────────────
 
 def best_prices_from_book(book: Orderbook) -> tuple[float, float]:

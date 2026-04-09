@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, MarketOrderArgs, OrderType
+from py_clob_client.clob_types import OrderArgs, MarketOrderArgs, OpenOrderParams, OrderType
 from py_clob_client.constants import POLYGON
 from py_clob_client.order_builder.constants import BUY, SELL
 
@@ -41,7 +41,7 @@ def _get_client() -> ClobClient:
 def place_limit_order(
     token_id: str, side: str, price: float, size: float, expiration: int = 0
 ) -> dict:
-    """Limit order. expiration: Unix timestamp (0 = GTC, >0 = GTD)."""
+    """Post-only limit order. expiration: Unix timestamp (0 = GTC, >0 = GTD)."""
     client = _get_client()
     signed = client.create_order(OrderArgs(
         price=price,
@@ -51,7 +51,7 @@ def place_limit_order(
         expiration=expiration,
     ))
     order_type = OrderType.GTD if expiration > 0 else OrderType.GTC
-    return client.post_order(signed, order_type)
+    return client.post_order(signed, order_type, post_only=True)
 
 
 def place_market_order(token_id: str, side: str, amount: float) -> dict:
@@ -68,3 +68,47 @@ def place_market_order(token_id: str, side: str, amount: float) -> dict:
 def cancel_all() -> dict:
     """Cancel all open orders for this account. Level 2 auth required."""
     return _get_client().cancel_all()
+
+
+def get_open_orders(asset_id: str = "") -> list[dict]:
+    """Return currently open orders for this account, optionally filtered by asset_id."""
+    params = OpenOrderParams(asset_id=asset_id) if asset_id else None
+    return list(_get_client().get_orders(params=params))
+
+
+def get_api_creds() -> dict:
+    """Return WS auth dict {apiKey, secret, passphrase}. Initialises client if needed."""
+    cr = _get_client().creds
+    return {
+        "apiKey":     getattr(cr, "api_key",        ""),
+        "secret":     getattr(cr, "api_secret",     ""),
+        "passphrase": getattr(cr, "api_passphrase", ""),
+    }
+
+
+def get_positions() -> dict[str, dict]:
+    """Fetch current token positions from the Polymarket data API.
+
+    Returns a dict keyed by asset_id (token ID) with values:
+        {"size": float, "avg_price": float, "outcome": str}
+
+    Uses POLY_FUNDER (proxy wallet address) as the query parameter.
+    Size < 0.01 shares are omitted (dust).
+    """
+    import httpx
+    funder = os.environ.get("POLY_FUNDER", "").strip()
+    if not funder:
+        return {}
+    url    = f"https://data-api.polymarket.com/positions?user={funder}&limit=500&sizeThreshold=0.01"
+    resp   = httpx.get(url, timeout=15)
+    resp.raise_for_status()
+    rows   = resp.json()
+    result: dict[str, dict] = {}
+    for row in rows:
+        asset_id = str(row.get("asset") or row.get("asset_id") or "").strip()
+        size     = float(row.get("size", 0) or 0)
+        avg      = float(row.get("avgPrice") or row.get("avg_price") or 0)
+        outcome  = str(row.get("outcome", "")).strip()
+        if asset_id and size >= 0.01:
+            result[asset_id] = {"size": size, "avg_price": avg, "outcome": outcome}
+    return result

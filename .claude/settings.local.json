@@ -3,7 +3,9 @@
     "allow": [
       "Bash(cd /tmp)",
       "Bash(unzip -l fa-free.zip)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(python -c \"from py_clob_client.client import ClobClient; import inspect; methods = [m for m in dir\\(ClobClient\\) if 'order' in m.lower\\(\\)]; print\\('\\\\n'.join\\(methods\\)\\)\")",
+      "Bash(python3 -c \"from py_clob_client.client import ClobClient; methods = [m for m in dir\\(ClobClient\\) if 'order' in m.lower\\(\\)]; print\\('\\\\n'.join\\(methods\\)\\)\")"
     ]
   }
 }

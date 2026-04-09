@@ -1,0 +1,35 @@
+{
+  "hotkeys": {
+    "buy_limit": null,
+    "sell_limit": null,
+    "buy_lv-1": 549,
+    "buy_lv0": 564,
+    "buy_lv1": 546,
+    "buy_lv2": null,
+    "sell_lv-1": 550,
+    "sell_lv0": 568,
+    "sell_lv1": 562,
+    "sell_lv2": null,
+    "mkt_buy": null,
+    "mkt_sell": null,
+    "cancel_all": 548,
+    "swap_paired": 563,
+    "bid_lv_up": null,
+    "bid_lv_dn": null,
+    "bid_lv_rst": null,
+    "ask_lv_up": null,
+    "ask_lv_dn": null,
+    "ask_lv_rst": null
+  },
+  "display": {
+    "compact_level": 1,
+    "book_font_size": 13,
+    "combined_table": true,
+    "show_zero_prices": true,
+    "depth_bar_max_size": 10000.0
+  },
+  "sound": {
+    "muted": false,
+    "volume": 65
+  }
+}
