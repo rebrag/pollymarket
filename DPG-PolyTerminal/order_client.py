@@ -1,5 +1,5 @@
 """
-order_client.py — thin wrapper around py-clob-client for Polymarket order placement.
+order_client.py — thin wrapper around py-clob-client-v2 for Polymarket order placement.
 Run all public functions in a background thread; never call from the GUI/main thread.
 """
 import os
@@ -8,10 +8,15 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, MarketOrderArgs, OpenOrderParams, OrderType
-from py_clob_client.constants import POLYGON
-from py_clob_client.order_builder.constants import BUY, SELL
+from py_clob_client_v2 import (
+    ClobClient,
+    OrderArgs,
+    MarketOrderArgs,
+    OpenOrderParams,
+    OrderType,
+    PartialCreateOrderOptions,
+    Side,
+)
 
 # signature_type=1 (POLY_PROXY): EOA signs on behalf of a Polymarket proxy wallet.
 # Required when POLY_KEY (EOA private key) and POLY_FUNDER (proxy wallet address)
@@ -25,16 +30,24 @@ _client: ClobClient | None = None
 def _get_client() -> ClobClient:
     global _client
     if _client is None:
-        client = ClobClient(
+        # Step 1: derive API creds with L1 auth only
+        bootstrap = ClobClient(
             host="https://clob.polymarket.com",
+            chain_id=137,
             key=os.environ["POLY_KEY"],
-            chain_id=POLYGON,
             signature_type=_SIG_TYPE,
             funder=os.environ["POLY_FUNDER"],
         )
-        creds = client.create_or_derive_api_creds()
-        client.set_api_creds(creds)
-        _client = client
+        creds = bootstrap.create_or_derive_api_key()
+        # Step 2: full client with L1 + L2 creds
+        _client = ClobClient(
+            host="https://clob.polymarket.com",
+            chain_id=137,
+            key=os.environ["POLY_KEY"],
+            creds=creds,
+            signature_type=_SIG_TYPE,
+            funder=os.environ["POLY_FUNDER"],
+        )
     return _client
 
 
@@ -43,26 +56,31 @@ def place_limit_order(
 ) -> dict:
     """Post-only limit order. expiration: Unix timestamp (0 = GTC, >0 = GTD)."""
     client = _get_client()
-    signed = client.create_order(OrderArgs(
-        price=price,
-        size=size,
-        side=BUY if side == "BUY" else SELL,
-        token_id=token_id,
-        expiration=expiration,
-    ))
     order_type = OrderType.GTD if expiration > 0 else OrderType.GTC
-    return client.post_order(signed, order_type, post_only=True)
+    return client.create_and_post_order(
+        order_args=OrderArgs(
+            price=price,
+            size=size,
+            side=Side.BUY if side == "BUY" else Side.SELL,
+            token_id=token_id,
+            expiration=expiration,
+        ),
+        order_type=order_type,
+        post_only=True,
+    )
 
 
 def place_market_order(token_id: str, side: str, amount: float) -> dict:
     """FOK market order. amount: USDC to spend (BUY) or tokens to sell (SELL)."""
     client = _get_client()
-    signed = client.create_market_order(MarketOrderArgs(
-        token_id=token_id,
-        amount=amount,
-        side=BUY if side == "BUY" else SELL,
-    ))
-    return client.post_order(signed, OrderType.FOK)
+    return client.create_and_post_market_order(
+        order_args=MarketOrderArgs(
+            token_id=token_id,
+            amount=amount,
+            side=Side.BUY if side == "BUY" else Side.SELL,
+        ),
+        order_type=OrderType.FOK,
+    )
 
 
 def cancel_all() -> dict:
@@ -73,7 +91,7 @@ def cancel_all() -> dict:
 def get_open_orders(asset_id: str = "") -> list[dict]:
     """Return currently open orders for this account, optionally filtered by asset_id."""
     params = OpenOrderParams(asset_id=asset_id) if asset_id else None
-    return list(_get_client().get_orders(params=params))
+    return list(_get_client().get_open_orders(params=params))
 
 
 def get_api_creds() -> dict:
@@ -84,6 +102,15 @@ def get_api_creds() -> dict:
         "secret":     getattr(cr, "api_secret",     ""),
         "passphrase": getattr(cr, "api_passphrase", ""),
     }
+
+
+def get_balance() -> float:
+    """Return USDC balance available in the proxy wallet."""
+    from py_clob_client_v2 import BalanceAllowanceParams, AssetType
+    result = _get_client().get_balance_allowance(
+        BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
+    )
+    return round(float(result.get("balance", 0) or 0) / 1_000_000)
 
 
 def get_positions() -> dict[str, dict]:

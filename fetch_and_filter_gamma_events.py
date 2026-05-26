@@ -1,4 +1,5 @@
 import json
+import time
 import requests
 from datetime import datetime, timedelta, timezone
 from typing import cast
@@ -18,22 +19,41 @@ def format_local(utc_str: str) -> str:
 def parse_utc(ts: str) -> datetime:
     return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
+def _get_with_retry(url: str, retries: int = 5, backoff: float = 1.5) -> requests.Response:
+    for attempt in range(retries):
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            return resp
+        if attempt < retries - 1:
+            time.sleep(backoff * (attempt + 1))
+    resp.raise_for_status()
+    return resp  # unreachable, satisfies type checker
+
 def fetch_and_filter_gamma_events() -> list[Event]:
-    # Timing and API setup
+    # Timing setup
     now: datetime = datetime.now(timezone.utc)
     win_start: datetime = now - timedelta(hours=H_BEFORE)
     win_end: datetime = now + timedelta(hours=H_AFTER)
 
-    api_min: str = (now - timedelta(hours=5)).isoformat().replace("+00:00", "Z")
-    api_max: str = (now + timedelta(hours=12)).isoformat().replace("+00:00", "Z")
+    # Data Fetching — /events/keyset with cursor-based pagination
+    # end_date_min/max cause 500s on the new API; use start_time_min/max instead
+    api_start_min: str = win_start.isoformat().replace("+00:00", "Z")
+    api_start_max: str = win_end.isoformat().replace("+00:00", "Z")
+    base_url = f"https://gamma-api.polymarket.com/events/keyset?limit=50&closed=false&order=volume24hr&ascending=false&start_time_min={api_start_min}&start_time_max={api_start_max}&volume_min={MIN_MARKET_VOL}"
+    gamma_events: list[Event] = []
+    cursor: str | None = None
 
-    # Data Fetching
-    resp: requests.Response = requests.get(f"https://gamma-api.polymarket.com/events?limit=500&active=true&closed=false&order=volume24hr&ascending=false&end_date_min={api_min}&end_date_max={api_max}&volume_min={MIN_MARKET_VOL}&tag_id=1")
-    resp.raise_for_status()
-    gamma_events: list[Event] = cast(list[Event], resp.json())
+    while True:
+        url = base_url + (f"&after_cursor={cursor}" if cursor else "")
+        resp = _get_with_retry(url)
+        data = resp.json()
+        page: list[Event] = cast(list[Event], data.get("events", []))
+        gamma_events.extend(page)
+        cursor = data.get("next_cursor")
+        if not cursor:
+            break
 
     # Processing and Filtering
-    # filtered_events: list[Event] = []
     total_unfiltered_m: int = 0
     total_filtered_m: int = 0
 
@@ -52,10 +72,10 @@ def fetch_and_filter_gamma_events() -> list[Event]:
 
     for event in filtered_events:
         raw_markets: list[Market] = event.get('markets', [])
-        
+
         # Market filter: Volume threshold
         valid_markets: list[Market] = [
-            m for m in raw_markets 
+            m for m in raw_markets
             if float(m.get('volume', 0)) > MIN_EVENT_VOL
             and float(m.get('bestAsk', 0)) not in {0.001, 1.0}
             and float(m.get('spread', 0.99)) < 0.3
@@ -72,16 +92,14 @@ def fetch_and_filter_gamma_events() -> list[Event]:
         time_lbl: str = format_local(event["startTime"])
         vol: int = round(float(event.get('volume', 0)))
         if LOGGING_ENABLED: print(f"{time_lbl}\tVol: {vol}\t{event['title']} (Markets: {len(valid_markets)}/{len(raw_markets)})")
-        
+
         for m in valid_markets:
             m_vol: float = m.get('volumeNum', 0)
             if LOGGING_ENABLED: print(f"  └─ Market: {m['question']} \t volume: {round(m_vol,2)} \t bestAsk: {m['bestAsk']} \t spread: {m['spread']}")
             token_list.add(m["clobTokenIds"].strip('[]"').partition('",')[0])
-            
 
     # Final Summary
     print("--- Final Totals ---")
-    # print(f'len(token_list) = {len(token_list)}')
     print(f"Events (API/Window): {len(gamma_events)}/len(filtered_events):{len(filtered_events)} len(output_events): {len(output_events)}")
     print(f"Markets from Filtered (Unfiltered/Filtered): {total_unfiltered_m}/{total_filtered_m}")
 

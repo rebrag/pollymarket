@@ -4,7 +4,11 @@
       "Bash(python -m py_compile DPG-PolyTerminal/main.py)",
       "Bash(python -c ':*)",
       "Bash(python3 DPG-PolyTerminal/main.py --help)",
-      "Bash(/c/Python314/python -m py_compile c:/Users/thejo/Documents/Dev/sweattheline/DPG-PolyTerminal/main.py)"
+      "Bash(/c/Python314/python -m py_compile c:/Users/thejo/Documents/Dev/sweattheline/DPG-PolyTerminal/main.py)",
+      "Bash(.venv/Scripts/python -c ':*)",
+      "Bash(.venv/Scripts/pip uninstall:*)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(python -c \"from py_clob_client_v2 import ClobClient; print\\([m for m in dir\\(ClobClient\\) if not m.startswith\\('_'\\)]\\)\")"
     ]
   }
 }

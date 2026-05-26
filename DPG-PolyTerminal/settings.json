@@ -26,10 +26,16 @@
     "book_font_size": 13,
     "combined_table": true,
     "show_zero_prices": true,
-    "depth_bar_max_size": 10000.0
+    "depth_bar_max_size": 5000.0
   },
   "sound": {
     "muted": false,
     "volume": 65
+  },
+  "repeat_bid": {
+    "price": 0.019999999552965164,
+    "size": 6.0,
+    "ttl_secs": 3,
+    "repeat_interval_secs": 4
   }
 }

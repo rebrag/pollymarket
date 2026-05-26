@@ -76,6 +76,11 @@ _positions:           dict[str, dict] = {}
 _positions_sync_lock: threading.Lock  = threading.Lock()
 _POSITIONS_POLL_SECS  = 60            # background periodic refresh interval
 
+# USDC balance — refreshed on startup, after fills, and periodically.
+_balance:           float         = 0.0
+_balance_sync_lock: threading.Lock = threading.Lock()
+_BALANCE_POLL_SECS  = 60
+
 # ── WebSocket asyncio loop (runs in background thread) ───────────────────────
 
 _orders_sync_lock = threading.Lock()
@@ -389,6 +394,25 @@ def _schedule_positions_sync() -> None:
     threading.Thread(target=_sync_positions, daemon=True, name="positions-sync").start()
 
 
+def _sync_balance() -> None:
+    """Fetch USDC balance from the CLOB API and update _balance."""
+    global _balance
+    if not _balance_sync_lock.acquire(blocking=False):
+        return  # already running
+    try:
+        fresh = order_client.get_balance()
+        _balance = fresh
+        print(f"[balance] synced ${fresh:,.2f}")
+    except Exception as exc:
+        print(f"[balance] sync failed: {exc}")
+    finally:
+        _balance_sync_lock.release()
+
+
+def _schedule_balance_sync() -> None:
+    threading.Thread(target=_sync_balance, daemon=True, name="balance-sync").start()
+
+
 def _process_order_update(order: dict, sub_type: str) -> None:
     """Update _open_orders from a single user-WS order event."""
     oid = order.get("id", "")
@@ -429,6 +453,7 @@ def _emit_fill_notification(trade: dict) -> None:
     _fill_queue.put((msg, color))
     threading.Thread(target=_play_fill_sound, daemon=True, name="fill-sound").start()
     _schedule_positions_sync()   # positions change on every fill
+    _schedule_balance_sync()     # USDC balance changes on every fill
 
 
 def _log_fill_trigger_event(trade: dict) -> None:
@@ -1462,8 +1487,8 @@ def _build_ask_levels(asks: list[tuple[float, float]], tick: float) -> list[floa
         return []
     t      = round(tick, 4)
     prices = [round(p, 4) for p, _ in asks]
-    # level -1: one tick above best ask (cap at 0.99)
-    result: list[float] = [min(round(prices[0] + t, 4), 0.99)]
+    # level -1: one tick below best ask, improving on it (floor at 0.01)
+    result: list[float] = [max(round(prices[0] - t, 4), 0.01)]
     result.append(prices[0])          # level 0: best ask
     for i in range(len(prices) - 1):
         gap = round(prices[i + 1] - prices[i], 4)
@@ -1622,6 +1647,9 @@ def _build_ui() -> None:
                     dpg.add_spacer(width=20)
                     dpg.add_text("userWS:", color=(140, 140, 140))
                     dpg.add_text("—", tag="hdr_user_ws", color=(140, 140, 140))
+                    dpg.add_spacer(width=20)
+                    dpg.add_text("Cash:", color=(140, 140, 140))
+                    dpg.add_text("—", tag="hdr_balance", color=(140, 140, 140))
                 dpg.add_button(
                     label="\uf013", tag="settings_btn", width=32, height=22,
                     callback=lambda: dpg.configure_item("settings_modal", show=True),
@@ -2870,11 +2898,12 @@ def _update_book_display(selected: str) -> None:
 
 
 _last_positions_check = 0.0
+_last_balance_check   = 0.0
 
 
 def _update_ui() -> None:
     """Called every rendered frame — reads shared state, pushes to DPG widgets."""
-    global _last_list_check, _last_positions_check
+    global _last_list_check, _last_positions_check, _last_balance_check
 
     # Header (cheap, every frame)
     dpg.set_value("hdr_status",  _ws_status)
@@ -2890,12 +2919,19 @@ def _update_ui() -> None:
     uws_color = (80, 220, 80) if uws == "Connected" else (255, 200, 60) if "onnect" in uws else (255, 100, 100)
     dpg.configure_item("hdr_user_ws", color=uws_color)
     dpg.set_value("hdr_user_ws", uws)
+    bal = _balance
+    bal_color = (80, 220, 80) if bal > 0 else (140, 140, 140)
+    dpg.configure_item("hdr_balance", color=bal_color)
+    dpg.set_value("hdr_balance", f"${bal:,.2f}" if bal > 0 else "—")
 
     # Market list (throttled — only rebuild when set changes)
     now = time.perf_counter()
     if now - _last_positions_check >= _POSITIONS_POLL_SECS:
         _schedule_positions_sync()
         _last_positions_check = now
+    if now - _last_balance_check >= _BALANCE_POLL_SECS:
+        _schedule_balance_sync()
+        _last_balance_check = now
     if now - _last_list_check >= LIST_REBUILD_SECS:
         with _lock:
             ids = list(_orderbooks.keys())
@@ -2977,6 +3013,7 @@ def main() -> None:
     # DearPyGui — uncapped render loop for maximum freshness
     _schedule_open_orders_sync()
     _schedule_positions_sync()
+    _schedule_balance_sync()
     dpg.create_context()
 
     # Consolas for all text. Font Awesome Solid for icons — bundled with the app
