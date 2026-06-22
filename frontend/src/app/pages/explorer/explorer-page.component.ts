@@ -49,6 +49,8 @@ export class ExplorerPageComponent implements OnInit {
     { title: 'PLACEHOLDER', meta: 'Mar 15', value: '$246,710' },
   ];
 
+  readonly pageSize = 50;
+
   readonly events = signal<EventSummary[]>([]);
   readonly marketsByEvent = signal<Record<string, MarketSummary[]>>({});
   readonly expandedEventSlugs = signal<Set<string>>(new Set<string>());
@@ -56,6 +58,7 @@ export class ExplorerPageComponent implements OnInit {
   readonly search = signal<string>('');
   readonly loading = signal<boolean>(false);
   readonly error = signal<string>('');
+  readonly currentPage = signal<number>(0);
 
   readonly heroStats = computed((): readonly HeroStat[] => [
     {
@@ -72,6 +75,13 @@ export class ExplorerPageComponent implements OnInit {
     },
     { label: 'PLACEHOLDER', value: '139,894,409', accent: 'from-orange-500/30 to-amber-400/10' },
   ]);
+
+  readonly totalPages = computed((): number => Math.ceil(this.filteredEvents().length / this.pageSize));
+
+  readonly paginatedEvents = computed((): EventSummary[] => {
+    const start = this.currentPage() * this.pageSize;
+    return this.filteredEvents().slice(start, start + this.pageSize);
+  });
 
   readonly filteredEvents = computed((): EventSummary[] => {
     const q = this.search().trim().toLowerCase();
@@ -114,6 +124,7 @@ export class ExplorerPageComponent implements OnInit {
       const nextSearch = params.get('q') ?? '';
       if (nextSearch !== this.search()) {
         this.search.set(nextSearch);
+        this.currentPage.set(0);
         this.expandedEventSlugs.set(new Set<string>());
         this.marketsByEvent.set({});
       }
@@ -125,7 +136,13 @@ export class ExplorerPageComponent implements OnInit {
   }
 
   applyFilters(): void {
+    this.currentPage.set(0);
     this.updateQueryParams();
+  }
+
+  goToPage(page: number): void {
+    this.currentPage.set(page);
+    this.expandedEventSlugs.set(new Set<string>());
   }
 
   onSearchInput(event: Event): void {

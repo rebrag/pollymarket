@@ -3,6 +3,7 @@ export interface EventSummary {
   event_title: string;
   market_count: number;
   game_start_time: number;
+  image_url: string;
 }
 
 export interface MarketSummary {

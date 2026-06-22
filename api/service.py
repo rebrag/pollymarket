@@ -145,6 +145,7 @@ class MarketCatalogService:
                         event_title=item.metadata.event_title or key,
                         market_count=0,
                         game_start_time=item.metadata.game_start_time,
+                        image_url=item.metadata.image_url or "",
                     ),
                     item.row_count,
                 )
@@ -152,6 +153,8 @@ class MarketCatalogService:
             summary.market_count += 1
             if item.row_count > max_rows:
                 summary.game_start_time = item.metadata.game_start_time
+                if not summary.image_url and item.metadata.image_url:
+                    summary.image_url = item.metadata.image_url
                 grouped[key] = (summary, item.row_count)
 
         events: list[EventSummary] = [summary for summary, _ in grouped.values()]

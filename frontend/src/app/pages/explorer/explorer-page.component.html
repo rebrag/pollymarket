@@ -152,7 +152,7 @@
           <span>Markets</span>
         </div>
 
-        @for (event of filteredEvents(); track trackByEventSlug($index, event)) {
+        @for (event of paginatedEvents(); track trackByEventSlug($index, event)) {
           <article class="rounded-2xl border border-slate-200">
             <button
               type="button"
@@ -163,6 +163,13 @@
                 <span class="inline-flex h-6 w-6 flex-none items-center justify-center rounded-full bg-sky-100 text-base font-extrabold text-sky-700">
                   {{ isExpanded(event.event_slug) ? '−' : '+' }}
                 </span>
+                @if (event.image_url || marketsForEvent(event.event_slug)[0]?.image_url) {
+                  <img
+                    [src]="event.image_url || marketsForEvent(event.event_slug)[0].image_url"
+                    alt="Event thumbnail"
+                    class="h-8 w-8 shrink-0 rounded-lg border border-sky-200/70 bg-white object-cover shadow-sm"
+                  />
+                }
                 <div class="min-w-0">
                   <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold">{{ event.event_title }}</p>
                 </div>
@@ -185,14 +192,6 @@
                       [routerLink]="['/markets', market.event_slug]"
                     >
                       <div class="flex min-w-0 items-center gap-3">
-                        @if (market.image_url) {
-                          <img
-                            [src]="market.image_url"
-                            alt="Market thumbnail"
-                            class="h-10 w-10 shrink-0 rounded-lg border border-sky-200/70 bg-white object-cover shadow-sm"
-                          />
-                        }
-
                         <div class="min-w-0">
                           <p class="m-0 overflow-hidden text-ellipsis text-sm font-bold text-slate-950">{{ market.market_question }}</p>
                         </div>
@@ -215,6 +214,32 @@
               </div>
             }
           </article>
+        }
+
+        @if (totalPages() > 1) {
+          <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+            <span class="text-[0.8rem] text-slate-500">
+              Page {{ currentPage() + 1 }} of {{ totalPages() }} &mdash; {{ filteredEvents().length }} events
+            </span>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                [disabled]="currentPage() === 0"
+                (click)="goToPage(currentPage() - 1)"
+              >
+                &lsaquo; Prev
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.8rem] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                [disabled]="currentPage() === totalPages() - 1"
+                (click)="goToPage(currentPage() + 1)"
+              >
+                Next &rsaquo;
+              </button>
+            </div>
+          </div>
         }
       </div>
     }

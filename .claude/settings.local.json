@@ -7,7 +7,8 @@
       "Bash(python -c \"from py_clob_client.client import ClobClient; import inspect; methods = [m for m in dir\\(ClobClient\\) if 'order' in m.lower\\(\\)]; print\\('\\\\n'.join\\(methods\\)\\)\")",
       "Bash(python3 -c \"from py_clob_client.client import ClobClient; methods = [m for m in dir\\(ClobClient\\) if 'order' in m.lower\\(\\)]; print\\('\\\\n'.join\\(methods\\)\\)\")",
       "WebFetch(domain:docs.polymarket.com)",
-      "Bash(.venv/Scripts/python fetch_and_filter_gamma_events.py)"
+      "Bash(.venv/Scripts/python fetch_and_filter_gamma_events.py)",
+      "Bash(npm start *)"
     ]
   }
 }
