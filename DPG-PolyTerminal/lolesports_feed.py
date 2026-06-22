@@ -77,18 +77,32 @@ def _iso_ago(seconds: int = 60) -> str:
     return floored.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
+def _next_cursor(iso_ts: str) -> str:
+    """
+    Advance a frame timestamp to the next 10-second boundary.
+    The API requires startingTime to be a clean .000Z boundary AND to be
+    strictly after the last frame already served, otherwise it returns 400.
+    e.g. '2026-06-12T08:45:29.789Z' → '2026-06-12T08:45:30.000Z'
+    """
+    try:
+        t = datetime.datetime.fromisoformat(iso_ts.replace("Z", "+00:00"))
+        t += datetime.timedelta(seconds=10)
+        t = t.replace(second=(t.second // 10) * 10, microsecond=0)
+        return t.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    except Exception:
+        return _iso_ago(300)
+
+
 def _window_start_time(last_frame_iso: str) -> str:
     """
     Return the startingTime for the next /window or /details poll.
-    - After the first successful response: use the last received frame's
-      timestamp so the API returns the next batch of frames.
-    - First poll (no frames yet): use 5 minutes ago. The API requires
-      startingTime to fall inside the actual game timeline, so recent
-      time is correct for any live game. 3 hours ago would land before
-      game 2 of a series started and return 204.
+    - After the first successful response: advance past the last frame so
+      the API returns new frames (raw rfc460Timestamps have sub-second
+      precision and are rejected as-is; must be a clean 10s boundary).
+    - First poll (no frames yet): use 5 minutes ago.
     """
     if last_frame_iso:
-        return last_frame_iso
+        return _next_cursor(last_frame_iso)
     return _iso_ago(300)
 
 
@@ -608,14 +622,20 @@ if __name__ == "__main__":
                     # Advance cursor to last frame so next poll picks up from there
                     frames = w_data.get("frames", [])
                     if frames:
-                        _cursor = frames[-1].get("rfc460Timestamp", _cursor)
-                    print(f"[window] {wr.status_code}  cursor → {_cursor}  ({len(frames)} frames)")
-                else:
-                    print(f"[window] {wr.status_code}  (no new frames at {_cursor})")
+                        last_frame = frames[-1]
+                        _cursor = _next_cursor(last_frame.get("rfc460Timestamp", _cursor))
+                        blue_gold = last_frame.get("blueTeam", {}).get("totalGold", "?")
+                        red_gold  = last_frame.get("redTeam",  {}).get("totalGold", "?")
+                        print(f"[window] {wr.status_code}  cursor → {_cursor}  ({len(frames)} frames)  blue gold={blue_gold}  red gold={red_gold}")
+                    else:
+                        print(f"[window] {wr.status_code}  cursor → {_cursor}  ({len(frames)} frames)")
+                # suppress "no new frames" spam — only print on new data or errors
+                elif wr.status_code not in (400, 204):
+                    print(f"[window] {wr.status_code}  (unexpected at {_cursor})")
             except Exception as _we:
                 print(f"[window] error: {_we}")
 
-            # ── /details (same cursor) ────────────────────────────────────────
+            # ── /details (same cursor, only on new window data) ───────────────
             try:
                 dr = requests.get(
                     _DETAIL_URL.format(game_id=gid),
@@ -625,13 +645,9 @@ if __name__ == "__main__":
                 if dr.status_code == 200 and dr.content:
                     _details_path.write_text(_json.dumps(dr.json(), indent=2), encoding="utf-8")
                     print(f"[details] {dr.status_code}  saved")
-                else:
-                    print(f"[details] {dr.status_code}  (no data)")
             except Exception as _de:
                 print(f"[details] error: {_de}")
-
-            print()
-            time.sleep(10)   # frames arrive every ~10 seconds
+            time.sleep(1)    # poll every 1s; cursor only advances on new frames
 
     except KeyboardInterrupt:
         print("\nStopped.")

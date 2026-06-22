@@ -260,6 +260,35 @@ def _format_ttl(expiration: int, now: float) -> str:
     return f"{h}h{rem // 60:02d}m"
 
 
+def _format_time_until_start(game_start_time: object, now: float) -> str:
+    try:
+        start_ts = float(game_start_time)
+    except (TypeError, ValueError):
+        return "—"
+    if start_ts <= 0:
+        return "—"
+
+    remaining = int(start_ts - now)
+    if remaining <= 0:
+        elapsed = abs(remaining)
+        hours, rem = divmod(elapsed, 3600)
+        minutes, seconds = divmod(rem, 60)
+        if hours > 0:
+            return f"Started ({hours}:{minutes:02d}:{seconds:02d})"
+        return f"Started ({minutes}:{seconds:02d})"
+
+    days, rem = divmod(remaining, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes:02d}m"
+    if hours > 0:
+        return f"{hours}h {minutes:02d}m {seconds:02d}s"
+    if minutes > 0:
+        return f"{minutes}m {seconds:02d}s"
+    return f"{seconds}s"
+
+
 def _normalize_order_side(side: object) -> str:
     side_txt = str(side or "").strip().upper()
     if side_txt in {"BUY", "B"}:
@@ -1731,7 +1760,7 @@ def _build_ui() -> None:
                                policy=dpg.mvTable_SizingFixedFit):
                     dpg.add_table_column(width_fixed=True, init_width_or_weight=110)
                     dpg.add_table_column(width_stretch=True)
-                    dpg.add_table_column(width_fixed=True, init_width_or_weight=110)
+                    dpg.add_table_column(width_fixed=True, init_width_or_weight=130)
                     dpg.add_table_column(width_stretch=True)
 
                     with dpg.table_row():
@@ -1758,6 +1787,11 @@ def _build_ui() -> None:
                         dpg.add_text("—", tag="meta_neg_risk",     color=_VAL)
                         dpg.add_text("Game start",    color=_LBL)
                         dpg.add_text("—", tag="meta_game_start",   color=_VAL)
+                    with dpg.table_row():
+                        dpg.add_text("", color=_LBL)
+                        dpg.add_text("", color=_VAL)
+                        dpg.add_text("Time Until Start", color=_LBL)
+                        dpg.add_text("—", tag="meta_time_until_start", color=_VAL)
                     with dpg.table_row():
                         dpg.add_text("Volume",        color=_LBL)
                         dpg.add_text("—", tag="meta_volume",       color=_VAL)
@@ -2879,6 +2913,7 @@ def _update_book_display(selected: str) -> None:
     else:
         gst_disp = "—"
     dpg.set_value("meta_game_start", gst_disp)
+    dpg.set_value("meta_time_until_start", _format_time_until_start(gst, time.time()))
 
     vol = book.get("volume",     0.0)
     v24 = book.get("volume_24hr", 0.0)

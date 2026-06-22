@@ -32,6 +32,8 @@ trade_logger_service: TradeHistoryLogger = TradeHistoryLogger(export_dir="./mark
 WS_PERFORMANCE_CHECKER_S = 5
 EVENT_REFRESH_SECONDS = 600
 SNAPSHOT_COALESCE_S = 0.5
+WS_OPEN_TIMEOUT_SECONDS = 20
+WS_RECONNECT_SECONDS = 3
 inactive_assets: set[str] = set()
 
 async def log_unhandled_event(event: object) -> None:
@@ -167,7 +169,12 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
         while True:
             refresh_task: asyncio.Task[None] | None = None
             try:
-                async with websockets.connect(WS_URL, ping_interval=10, ping_timeout=10) as ws:
+                async with websockets.connect(
+                    WS_URL,
+                    ping_interval=10,
+                    ping_timeout=10,
+                    open_timeout=WS_OPEN_TIMEOUT_SECONDS,
+                ) as ws:
                     await ws.send(ws_initial_subscribe(list(orderbooks)))
                     print(f"Connected and subscribed to {len(orderbooks)} assets. Listening...")
                     refresh_task = asyncio.create_task(refresh_events_loop(ws, orderbooks))
@@ -238,7 +245,10 @@ async def start_ws(orderbooks: dict[str, Orderbook]) -> None:
 
             except websockets.exceptions.ConnectionClosed as e:
                 print(f"Websocket disconnected. Reconnecting in 3s... error: {e}")
-                await asyncio.sleep(3)
+                await asyncio.sleep(WS_RECONNECT_SECONDS)
+            except (TimeoutError, OSError, websockets.exceptions.InvalidHandshake) as e:
+                print(f"Websocket connection failed. Reconnecting in {WS_RECONNECT_SECONDS}s... error: {e}")
+                await asyncio.sleep(WS_RECONNECT_SECONDS)
             finally:
                 if refresh_task is not None:
                     refresh_task.cancel()
