@@ -100,21 +100,20 @@ export class ExplorerPageComponent implements OnInit {
         return -1;
       }
       if (aTs !== bTs) {
-        return aTs - bTs;
+        return bTs - aTs;
       }
       return a.event_slug.localeCompare(b.event_slug);
     };
 
     if (!q) {
-      return [...events].sort(compareByGameStart).reverse();
+      return [...events].sort(compareByGameStart);
     }
 
     return events
       .filter((event) => {
         return event.event_title.toLowerCase().includes(q) || event.event_slug.toLowerCase().includes(q);
       })
-      .sort(compareByGameStart)
-      .reverse();
+      .sort(compareByGameStart);
   });
 
   ngOnInit(): void {
@@ -184,18 +183,23 @@ export class ExplorerPageComponent implements OnInit {
   }
 
   private loadEvents(): void {
-    this.loading.set(true);
+    let didEmitSync = false;
     this.error.set('');
     this.api.getEvents().subscribe({
       next: (events) => {
+        didEmitSync = true;
         this.events.set(events);
         this.loading.set(false);
       },
       error: (err) => {
+        didEmitSync = true;
         this.error.set(`Failed loading events: ${err?.message ?? 'unknown error'}`);
         this.loading.set(false);
       },
     });
+    if (!didEmitSync) {
+      this.loading.set(true);
+    }
   }
 
   private loadMarketsForEvent(eventSlug: string): void {

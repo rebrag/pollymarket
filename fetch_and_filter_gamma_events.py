@@ -39,7 +39,7 @@ def fetch_and_filter_gamma_events() -> list[Event]:
     # end_date_min/max cause 500s on the new API; use start_time_min/max instead
     api_start_min: str = win_start.isoformat().replace("+00:00", "Z")
     api_start_max: str = win_end.isoformat().replace("+00:00", "Z")
-    base_url = f"https://gamma-api.polymarket.com/events/keyset?limit=50&closed=false&order=volume24hr&ascending=false&start_time_min={api_start_min}&start_time_max={api_start_max}&volume_min={MIN_MARKET_VOL}"
+    base_url = f"https://gamma-api.polymarket.com/events/keyset?limit=50&closed=false&order=volume24hr&ascending=false&start_time_min={api_start_min}&start_time_max={api_start_max}&volume_min={MIN_MARKET_VOL}&tag_id=1"
     gamma_events: list[Event] = []
     cursor: str | None = None
 

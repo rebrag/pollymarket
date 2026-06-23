@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { shareReplay } from 'rxjs/operators';
 
 import {
   EventSummary,
@@ -19,11 +20,12 @@ import { environment } from '../../environments/environment';
 @Injectable({ providedIn: 'root' })
 export class MarketApiService {
   private readonly base = environment.apiBaseUrl;
+  private readonly events$ = this.http.get<EventSummary[]>(`${this.base}/api/v1/events`).pipe(shareReplay({ bufferSize: 1, refCount: false }));
 
   constructor(private readonly http: HttpClient) {}
 
   getEvents(): Observable<EventSummary[]> {
-    return this.http.get<EventSummary[]>(`${this.base}/api/v1/events`);
+    return this.events$;
   }
 
   getMarkets(eventSlug: string, q: string, limit: number, offset: number): Observable<PaginatedResponse<MarketSummary>> {

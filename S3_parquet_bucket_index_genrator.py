@@ -99,4 +99,4 @@ def generate_index(bucket_name: str, region: str) -> None:
     print(f"Successfully generated market_index.json with {len(index_data)} records.")
 
 if __name__ == "__main__":
-    generate_index(bucket_name="rebrag-polymarket-logs", region="us-east-2")
+    generate_index(bucket_name="sweattheline-parquets", region="us-east-1")
