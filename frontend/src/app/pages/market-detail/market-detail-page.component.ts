@@ -160,6 +160,7 @@ export class MarketDetailPageComponent implements OnInit {
   readonly minTradeSizeInput = signal('0');
   readonly appliedMinTradeSize = signal('0');
   timeFilterError = '';
+  showTradeDotsModal = false;
   seriesLoading = false;
   tradePointsLoading = false;
   tradePointState = '';
@@ -219,7 +220,7 @@ export class MarketDetailPageComponent implements OnInit {
       },
     },
     plugins: {
-      legend: { display: true },
+      legend: { display: true, position: 'bottom' },
       tooltip: {
         mode: 'nearest',
         intersect: true,
@@ -355,6 +356,14 @@ export class MarketDetailPageComponent implements OnInit {
     this.chartRangeEnd.set(this.defaultChartRangeEnd());
     this.timeFilterError = '';
     this.loadSeriesForCurrentRange();
+  }
+
+  openTradeDotsModal(): void {
+    this.showTradeDotsModal = true;
+  }
+
+  closeTradeDotsModal(): void {
+    this.showTradeDotsModal = false;
   }
 
   updateMinTradeSizeInput(value: string): void {

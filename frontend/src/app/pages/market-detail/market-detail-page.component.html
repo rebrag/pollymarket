@@ -1,13 +1,5 @@
 <section class="mx-auto flex w-full max-w-6xl flex-col gap-2.5 px-2 py-3 sm:px-3 lg:px-4">
   <div class="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur">
-    <a
-      routerLink="/"
-      class="inline-flex w-fit items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
-    >
-      <span aria-hidden="true">←</span>
-      <span>Back to explorer</span>
-    </a>
-
     <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       
       <div class="flex items-center gap-3.5">
@@ -53,7 +45,7 @@
   }
 
   @if (metadata) {
-    <section class="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+    <section class="grid gap-2 md:grid-cols-2">
       <article class="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
         <div class="flex items-start justify-between gap-2">
           <div>
@@ -177,8 +169,8 @@
       </article>
     </section>
 
-    <section class="grid gap-2">
-      <div class="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:grid-cols-2 sm:p-2.5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]">
+    <section class="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/90 p-2 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-2.5">
+      <div class="grid grid-cols-1 items-end gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)_auto]">
         <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
           <span>From</span>
           <input
@@ -199,39 +191,34 @@
           />
         </label>
 
-        <div class="grid gap-1">
-          <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
-            <span>Min trade size</span>
-            <input
-              type="number"
-              min="0"
-              step="0.001"
-              [ngModel]="minTradeSizeInput()"
-              (ngModelChange)="updateMinTradeSizeInput($event)"
-              (keydown.enter)="applyMinTradeSize()"
-              class="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-[0.74rem] font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
-            />
-          </label>
-          <p class="text-[0.65rem] font-medium text-slate-500">Press Enter or Apply.</p>
-        </div>
+        <label brnLabel class="grid gap-1 text-[0.68rem] font-semibold text-slate-700">
+          <span>Min trade size</span>
+          <input
+            type="number"
+            min="0"
+            step="0.001"
+            [ngModel]="minTradeSizeInput()"
+            (ngModelChange)="updateMinTradeSizeInput($event)"
+            (keydown.enter)="applyMinTradeSize()"
+            class="h-9 rounded-lg border border-slate-300 bg-white px-2.5 text-[0.74rem] font-medium text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+          />
+        </label>
 
-        <div class="flex items-end">
-          <div class="flex w-full gap-2 sm:w-auto">
-            <button
-              type="button"
-              class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
-              (click)="applyMinTradeSize()"
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              class="inline-flex h-9 w-full items-center justify-center rounded-lg border border-slate-300 !bg-white px-3 text-[0.74rem] font-semibold !text-slate-700 transition hover:border-slate-400 hover:!bg-slate-50 sm:w-auto"
-              (click)="clearChartTimeFilter()"
-            >
-              Clear range
-            </button>
-          </div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-sky-600 !bg-sky-600 px-4 text-[0.74rem] font-semibold !text-white shadow-sm transition hover:border-sky-700 hover:!bg-sky-700 active:translate-y-px sm:flex-none"
+            (click)="applyMinTradeSize()"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-slate-300 !bg-white px-4 text-[0.74rem] font-semibold !text-slate-700 shadow-sm transition hover:border-slate-400 hover:!bg-slate-50 active:translate-y-px sm:flex-none"
+            (click)="clearChartTimeFilter()"
+          >
+            Clear range
+          </button>
         </div>
       </div>
 
@@ -241,28 +228,25 @@
         </p>
       }
 
-      <div class="trade-marker-legend rounded-xl border border-slate-200 bg-white/90 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Trade dots</p>
-            <h2 class="mt-0.5 text-xs font-bold text-slate-900">One dot per trade row</h2>
-          </div>
-
-          <div class="trade-marker-legend__items">
-            <span class="trade-marker-chip trade-marker-chip--buy">Buy trade</span>
-            <span class="trade-marker-chip trade-marker-chip--sell">Sell trade</span>
-            <span class="trade-marker-chip trade-marker-chip--highlight">Larger size = larger dot</span>
-          </div>
-        </div>
-
-        @if (tradePointsLoading) {
-          <p class="mt-2 text-[0.72rem] font-medium text-slate-600">Loading trade dots...</p>
-        } @else if (tradePointState) {
-          <p class="mt-2 text-[0.72rem] font-medium text-slate-600">{{ tradePointState }}</p>
-        }
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-[0.72rem] font-medium text-slate-600">
+          @if (tradePointsLoading) {
+            Loading trade dots...
+          } @else if (tradePointState) {
+            {{ tradePointState }}
+          }
+        </p>
+        <button
+          type="button"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+          (click)="openTradeDotsModal()"
+        >
+          <span aria-hidden="true" class="flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[0.6rem] font-bold text-slate-600">?</span>
+          What are the trade dots?
+        </button>
       </div>
 
-      <div class="relative min-h-[400px] rounded-xl border border-slate-200 bg-white/90 p-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)] sm:p-1.5 md:min-h-[440px]">
+      <div class="relative min-h-[400px] p-1 sm:p-1.5 md:min-h-[440px]">
         @if (dragSelectionVisible && dragSelectionWidthPx > 0) {
           <div
             class="pointer-events-none absolute rounded-md border border-sky-500/70 bg-sky-300/20"
@@ -294,6 +278,45 @@
         ></canvas>
       </div>
     </section>
+
+    @if (showTradeDotsModal) {
+      <div
+        class="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trade-dots-modal-title"
+        (click)="closeTradeDotsModal()"
+      >
+        <div class="absolute inset-0 bg-slate-900/30 backdrop-blur-sm"></div>
+        <div
+          class="relative w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-[0_20px_50px_rgba(15,23,42,0.25)]"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <h3 id="trade-dots-modal-title" class="text-sm font-bold text-slate-900">About the trade dots</h3>
+            <button
+              type="button"
+              class="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+              aria-label="Close"
+              (click)="closeTradeDotsModal()"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p class="mt-2 text-[0.8rem] leading-relaxed text-slate-600">
+            Each dot marks a single trade, placed at the time it executed and the price it filled at.
+            Green dots are buys and red dots are sells, and the bigger the dot, the larger the trade size.
+          </p>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="trade-marker-chip trade-marker-chip--buy">Buy trade</span>
+            <span class="trade-marker-chip trade-marker-chip--sell">Sell trade</span>
+            <span class="trade-marker-chip trade-marker-chip--highlight">Larger size = larger dot</span>
+          </div>
+        </div>
+      </div>
+    }
   }
 
   <!-- <section class="card">
